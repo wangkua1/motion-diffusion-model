@@ -1,7 +1,7 @@
 # This code is based on https://github.com/Mathux/ACTOR.git
 import torch
 import utils.rotation_conversions as geometry
-
+import ipdb
 
 from model.smpl import SMPL, JOINTSTYPE_ROOT
 # from .get_model import JOINTSTYPES
@@ -29,6 +29,7 @@ class Rotation2xyz:
         if jointstype not in JOINTSTYPES:
             raise NotImplementedError("This jointstype is not implemented.")
 
+        ipdb.set_trace()
         if translation:
             x_translations = x[:, -1, :3]
             x_rotations = x[:, :-1]

@@ -17,7 +17,7 @@ import data_loaders.humanml.utils.paramUtil as paramUtil
 from data_loaders.humanml.utils.plot_script import plot_3d_motion
 import shutil
 from data_loaders.tensors import collate
-
+import ipdb
 
 def main():
     args = generate_args()
@@ -124,6 +124,7 @@ def main():
             const_noise=False,
         )
 
+        # ipdb.set_trace()
         # Recover XYZ *positions* from HumanML3D vector representation
         if model.data_rep == 'hml_vec':
             n_joints = 22 if sample.shape[1] == 263 else 21

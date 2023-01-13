@@ -1,4 +1,4 @@
-mkdir -p dataset/HumanAct12Poses
+# mkdir dataset/HumanAct12Poses
 cd dataset/HumanAct12Poses
 
 echo "The datasets will be stored in the 'dataset' folder\n"
