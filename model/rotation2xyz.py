@@ -29,7 +29,7 @@ class Rotation2xyz:
         if jointstype not in JOINTSTYPES:
             raise NotImplementedError("This jointstype is not implemented.")
 
-        ipdb.set_trace()
+        # ipdb.set_trace()
         if translation:
             x_translations = x[:, -1, :3]
             x_rotations = x[:, :-1]
