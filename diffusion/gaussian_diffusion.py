@@ -8,7 +8,7 @@ Docstrings have been added, as well as DDIM sampling and a new collection of bet
 
 import enum
 import math
-
+import ipdb
 import numpy as np
 import torch
 import torch as th
@@ -503,6 +503,8 @@ class GaussianDiffusion:
         cond_fn=None,
         model_kwargs=None,
         const_noise=False,
+        const_t_noise=False,
+        noise=None
     ):
         """
         Sample x_{t-1} from the model at the given timestep.
@@ -529,10 +531,13 @@ class GaussianDiffusion:
             denoised_fn=denoised_fn,
             model_kwargs=model_kwargs,
         )
-        noise = th.randn_like(x)
-        # print('const_noise', const_noise)
-        if const_noise:
-            noise = noise[[0]].repeat(x.shape[0], 1, 1, 1)
+        if const_t_noise:
+            pass  # use the fed in `noise`.
+        else:
+            noise = th.randn_like(x)
+            # print('const_noise', const_noise)
+            if const_noise:
+                noise = noise[[0]].repeat(x.shape[0], 1, 1, 1)
 
         nonzero_mask = (
             (t != 0).float().view(-1, *([1] * (len(x.shape) - 1)))
@@ -612,6 +617,7 @@ class GaussianDiffusion:
         cond_fn_with_grad=False,
         dump_steps=None,
         const_noise=False,
+        const_t_noise=False,
     ):
         """
         Generate samples from the model.
@@ -631,6 +637,7 @@ class GaussianDiffusion:
                        If not specified, use a model parameter's device.
         :param progress: if True, show a tqdm progress bar.
         :param const_noise: If True, will noise all samples with the same noise throughout sampling
+        :param const_t_noise: If True, will keep the user-specified noise throughout sampling. 
         :return: a non-differentiable batch of samples.
         """
         final = None
@@ -652,6 +659,7 @@ class GaussianDiffusion:
             randomize_class=randomize_class,
             cond_fn_with_grad=cond_fn_with_grad,
             const_noise=const_noise,
+            const_t_noise=const_t_noise,
         )):
             if dump_steps is not None and i in dump_steps:
                 dump.append(deepcopy(sample["sample"]))
@@ -676,6 +684,7 @@ class GaussianDiffusion:
         randomize_class=False,
         cond_fn_with_grad=False,
         const_noise=False,
+        const_t_noise=False
     ):
         """
         Generate samples from the model and yield intermediate samples from
@@ -714,6 +723,7 @@ class GaussianDiffusion:
                 model_kwargs['y'] = th.randint(low=0, high=model.num_classes,
                                                size=model_kwargs['y'].shape,
                                                device=model_kwargs['y'].device)
+            # ipdb.set_trace()
             with th.no_grad():
                 sample_fn = self.p_sample_with_grad if cond_fn_with_grad else self.p_sample
                 out = sample_fn(
@@ -725,6 +735,8 @@ class GaussianDiffusion:
                     cond_fn=cond_fn,
                     model_kwargs=model_kwargs,
                     const_noise=const_noise,
+                    const_t_noise=const_t_noise,
+                    noise=noise
                 )
                 yield out
                 img = out["sample"]

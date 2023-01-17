@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import clip
 from model.rotation2xyz import Rotation2xyz
-
+import ipdb
 
 
 class MDM(nn.Module):
@@ -145,7 +145,8 @@ class MDM(nn.Module):
         """
         bs, njoints, nfeats, nframes = x.shape
         emb = self.embed_timestep(timesteps)  # [1, bs, d]
-
+        # ipdb.set_trace()
+        
         force_mask = y.get('uncond', False)
         if 'text' in self.cond_mode:
             enc_text = self.encode_text(y['text'])
@@ -162,7 +163,6 @@ class MDM(nn.Module):
             x = torch.cat((x_reshaped, emb_gru), axis=1)  #[bs, d+joints*feat, 1, #frames]
 
         x = self.input_process(x)
-
         if self.arch == 'trans_enc':
             # adding the timestep embed
             xseq = torch.cat((emb, x), axis=0)  # [seqlen+1, bs, d]
