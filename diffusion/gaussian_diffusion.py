@@ -561,6 +561,9 @@ class GaussianDiffusion:
         denoised_fn=None,
         cond_fn=None,
         model_kwargs=None,
+        const_noise=False,
+        const_t_noise=False,
+        noise=None
     ):
         """
         Sample x_{t-1} from the model at the given timestep.
@@ -579,6 +582,8 @@ class GaussianDiffusion:
                  - 'sample': a random sample from the model.
                  - 'pred_xstart': a prediction of x_0.
         """
+        del const_noise
+        
         with th.enable_grad():
             x = x.detach().requires_grad_()
             out = self.p_mean_variance(
@@ -589,7 +594,10 @@ class GaussianDiffusion:
                 denoised_fn=denoised_fn,
                 model_kwargs=model_kwargs,
             )
-            noise = th.randn_like(x)
+            if const_t_noise:
+                pass  # use the fed in `noise`.
+            else:
+                noise = th.randn_like(x)
             nonzero_mask = (
                 (t != 0).float().view(-1, *([1] * (len(x.shape) - 1)))
             )  # no noise when t == 0
@@ -724,22 +732,22 @@ class GaussianDiffusion:
                                                size=model_kwargs['y'].shape,
                                                device=model_kwargs['y'].device)
             # ipdb.set_trace()
-            with th.no_grad():
-                sample_fn = self.p_sample_with_grad if cond_fn_with_grad else self.p_sample
-                out = sample_fn(
-                    model,
-                    img,
-                    t,
-                    clip_denoised=clip_denoised,
-                    denoised_fn=denoised_fn,
-                    cond_fn=cond_fn,
-                    model_kwargs=model_kwargs,
-                    const_noise=const_noise,
-                    const_t_noise=const_t_noise,
-                    noise=noise
-                )
-                yield out
-                img = out["sample"]
+            # with th.no_grad():
+            sample_fn = self.p_sample_with_grad if cond_fn_with_grad else self.p_sample
+            out = sample_fn(
+                model,
+                img,
+                t,
+                clip_denoised=clip_denoised,
+                denoised_fn=denoised_fn,
+                cond_fn=cond_fn,
+                model_kwargs=model_kwargs,
+                const_noise=const_noise,
+                const_t_noise=const_t_noise,
+                noise=noise
+            )
+            yield out
+            img = out["sample"]
 
     def ddim_sample(
         self,
