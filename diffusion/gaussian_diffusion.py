@@ -298,7 +298,7 @@ class GaussianDiffusion:
                  - 'pred_xstart': the prediction for x_0.
         """
         if model_kwargs is None:
-            model_kwargs = {}
+            model_kwargs = {'y':{}}
 
         B, C = x.shape[:2]
         assert t.shape == (B,)
