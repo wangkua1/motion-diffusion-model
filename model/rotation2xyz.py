@@ -2,7 +2,7 @@
 import torch
 import mdm.utils.rotation_conversions as geometry
 import ipdb
-
+from VIBE.lib.utils.geometry import rotation_matrix_to_angle_axis, rot6d_to_rotmat
 from model.smpl import SMPL, JOINTSTYPE_ROOT
 # from .get_model import JOINTSTYPES
 JOINTSTYPES = ["a2m", "a2mpl", "smpl", "vibe", "vertices"]
@@ -48,6 +48,8 @@ class Rotation2xyz:
             rotations = geometry.quaternion_to_matrix(x_rotations[mask])
         elif pose_rep == "rot6d":
             rotations = geometry.rotation_6d_to_matrix(x_rotations[mask])
+            # pred_rotmat = rot6d_to_rotmat(x_rotations[mask]).view(-1, 24, 3, 3)
+            # ipdb.set_trace() ## clearly different...
         else:
             raise NotImplementedError("No geometry for this one.")
 

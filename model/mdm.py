@@ -145,7 +145,6 @@ class MDM(nn.Module):
         """
         bs, njoints, nfeats, nframes = x.shape
         emb = self.embed_timestep(timesteps)  # [1, bs, d]
-        # ipdb.set_trace()
         
         force_mask = y.get('uncond', False)
         if 'text' in self.cond_mode:
