@@ -3,19 +3,19 @@
 Generate a large batch of image samples from a model and save them as a large
 numpy array. This can be used to produce samples for FID evaluation.
 """
-from utils.fixseed import fixseed
+from mdm.utils.fixseed import fixseed
 import os
 import numpy as np
 import torch
-from utils.parser_util import edit_args
-from utils.model_util import create_model_and_diffusion, load_model_wo_clip
-from utils import dist_util
-from model.cfg_sampler import ClassifierFreeSampleModel
-from data_loaders.get_data import get_dataset_loader
-from data_loaders.humanml.scripts.motion_process import recover_from_ric
-from data_loaders import humanml_utils
-import data_loaders.humanml.utils.paramUtil as paramUtil
-from data_loaders.humanml.utils.plot_script import plot_3d_motion
+from mdm.utils.parser_util import edit_args
+from mdm.utils.model_util import create_model_and_diffusion, load_model_wo_clip
+from mdm.utils import dist_util
+from mdm.model.cfg_sampler import ClassifierFreeSampleModel
+from mdm.data_loaders.get_data import get_dataset_loader
+from mdm.data_loaders.humanml.scripts.motion_process import recover_from_ric
+from mdm.data_loaders import humanml_utils
+import mdm.data_loaders.humanml.utils.paramUtil as paramUtil
+from mdm.data_loaders.humanml.utils.plot_script import plot_3d_motion
 import shutil
 
 
@@ -42,11 +42,14 @@ def main():
     # If it doesn't, and you still want to sample more prompts, run this script with different seeds
     # (specify through the --seed flag)
     args.batch_size = args.num_samples  # Sampling a single batch from the testset, with exactly args.num_samples
+
+    # JB: manually setting different dataset 
     data = get_dataset_loader(name=args.dataset,
                               batch_size=args.batch_size,
                               num_frames=max_frames,
                               split='test',
-                              hml_mode='train')  # in train mode, you get both text and motion.
+                              # hml_mode='train')  # in train mode, you get both text and motion.
+                              hml_mode='text_only') # JB added
     # data.fixed_length = n_frames
     total_num_samples = args.num_samples * args.num_repetitions
 
@@ -57,9 +60,12 @@ def main():
     state_dict = torch.load(args.model_path, map_location='cpu')
     load_model_wo_clip(model, state_dict)
 
+    # if 0: 
     model = ClassifierFreeSampleModel(model)   # wrapping model with the classifier-free sampler
     model.to(dist_util.dev())
     model.eval()  # disable random masking
+
+    import ipdb; ipdb.set_trace()
 
     iterator = iter(data)
     input_motions, model_kwargs = next(iterator)

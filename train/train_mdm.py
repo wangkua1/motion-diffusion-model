@@ -5,13 +5,14 @@ Train a diffusion model on images.
 
 import os
 import json
-from utils.fixseed import fixseed
-from utils.parser_util import train_args
-from utils import dist_util
-from train.training_loop import TrainLoop
-from data_loaders.get_data import get_dataset_loader
-from utils.model_util import create_model_and_diffusion
-from train.train_platforms import ClearmlPlatform, TensorboardPlatform, NoPlatform  # required for the eval operation
+import ipdb
+from mdm.utils.fixseed import fixseed
+from mdm.utils.parser_util import train_args
+from mdm.utils import dist_util
+from mdm.train.training_loop import TrainLoop
+from mdm.data_loaders.get_data import get_dataset_loader
+from mdm.utils.model_util import create_model_and_diffusion
+from mdm.train.train_platforms import ClearmlPlatform, TensorboardPlatform, NoPlatform  # required for the eval operation
 
 def main():
     args = train_args()
@@ -32,6 +33,7 @@ def main():
 
     dist_util.setup_dist(args.device)
 
+    ipdb.set_trace()
     print("creating data loader...")
     data = get_dataset_loader(name=args.dataset, batch_size=args.batch_size, num_frames=args.num_frames)
 

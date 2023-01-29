@@ -9,15 +9,15 @@ import blobfile as bf
 import torch
 from torch.optim import AdamW
 
-from diffusion import logger
-from utils import dist_util
-from diffusion.fp16_util import MixedPrecisionTrainer
-from diffusion.resample import LossAwareSampler, UniformSampler
+from mdm.diffusion import logger
+from mdm.utils import dist_util
+from mdm.diffusion.fp16_util import MixedPrecisionTrainer
+from mdm.diffusion.resample import LossAwareSampler, UniformSampler
 from tqdm import tqdm
-from diffusion.resample import create_named_schedule_sampler
-from data_loaders.humanml.networks.evaluator_wrapper import EvaluatorMDMWrapper
-from eval import eval_humanml, eval_humanact12_uestc
-from data_loaders.get_data import get_dataset_loader
+from mdm.diffusion.resample import create_named_schedule_sampler
+from mdm.data_loaders.humanml.networks.evaluator_wrapper import EvaluatorMDMWrapper
+from mdm.eval import eval_humanml, eval_humanact12_uestc
+from mdm.data_loaders.get_data import get_dataset_loader
 
 
 # For ImageNet experiments, this was a good default value.

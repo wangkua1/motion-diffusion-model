@@ -209,7 +209,7 @@ class Text2MotionDatasetV2(data.Dataset):
         self.opt = opt
         self.w_vectorizer = w_vectorizer
         self.max_length = 20
-        self.pointer = 0
+        self.pointer = 0        # word length?
         self.max_motion_length = opt.max_motion_length
         min_motion_len = 40 if self.opt.dataset_name =='t2m' else 24
 
@@ -721,12 +721,12 @@ class TextOnlyDataset(data.Dataset):
 class HumanML3D(data.Dataset):
     def __init__(self, mode, datapath='./dataset/humanml_opt.txt', split="train", **kwargs):
         self.mode = mode
-        
         self.dataset_name = 't2m'
         self.dataname = 't2m'
+        
 
         # Configurations of T2M dataset and KIT dataset is almost the same
-        abs_base_path = f'.'
+        abs_base_path = f'./mdm/'       # JB added 
         dataset_opt_path = pjoin(abs_base_path, datapath)
         device = None  # torch.device('cuda:4') # This param is not in use in this context
         opt = get_opt(dataset_opt_path, device)
@@ -737,11 +737,13 @@ class HumanML3D(data.Dataset):
         opt.checkpoints_dir = pjoin(abs_base_path, opt.checkpoints_dir)
         opt.data_root = pjoin(abs_base_path, opt.data_root)
         opt.save_root = pjoin(abs_base_path, opt.save_root)
-        opt.meta_dir = './dataset'
+        # opt.meta_dir = dataset_opt_path # JB changed this 'mdm/dataset'
+        opt.meta_dir = "./mdm/dataset"
         self.opt = opt
+        import ipdb; ipdb.set_trace()
         print('Loading dataset %s ...' % opt.dataset_name)
 
-        if mode == 'gt':
+        if mode == 'gt':    
             # used by T2M models (including evaluators)
             self.mean = np.load(pjoin(opt.meta_dir, f'{opt.dataset_name}_mean.npy'))
             self.std = np.load(pjoin(opt.meta_dir, f'{opt.dataset_name}_std.npy'))
