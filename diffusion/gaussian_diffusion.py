@@ -302,6 +302,7 @@ class GaussianDiffusion:
 
         B, C = x.shape[:2]
         assert t.shape == (B,)
+
         model_output = model(x, self._scale_timesteps(t), **model_kwargs)
 
         if 'inpainting_mask' in model_kwargs['y'].keys() and 'inpainted_motion' in model_kwargs['y'].keys():
@@ -551,7 +552,7 @@ class GaussianDiffusion:
         # print('nonzero_mask', nonzero_mask.shape, nonzero_mask)
         sample = out["mean"] + nonzero_mask * th.exp(0.5 * out["log_variance"]) * noise
 
-        return {"sample": sample, "pred_xstart": out["pred_xstart"]}
+        return {"sample": sample, "pred_xstart": out["pred_xstart"], "mean": out["mean"]}
 
     def p_sample_with_grad(
         self,
@@ -627,6 +628,8 @@ class GaussianDiffusion:
         dump_steps=None,
         const_noise=False,
         const_t_noise=False,
+        indices=None,
+        use_mean=False
     ):
         """
         Generate samples from the model.
@@ -669,13 +672,18 @@ class GaussianDiffusion:
             cond_fn_with_grad=cond_fn_with_grad,
             const_noise=const_noise,
             const_t_noise=const_t_noise,
+            indices=indices,
+            use_mean=use_mean
         )):
             if dump_steps is not None and i in dump_steps:
                 dump.append(deepcopy(sample["sample"]))
             final = sample
         if dump_steps is not None:
             return dump
-        return final["sample"]
+        if use_mean:
+            return final['mean']
+        else:
+            return final["sample"]
 
     def p_sample_loop_progressive(
         self,
@@ -693,7 +701,9 @@ class GaussianDiffusion:
         randomize_class=False,
         cond_fn_with_grad=False,
         const_noise=False,
-        const_t_noise=False
+        const_t_noise=False,
+        indices=None,
+        use_mean=False
     ):
         """
         Generate samples from the model and yield intermediate samples from
@@ -714,7 +724,8 @@ class GaussianDiffusion:
         if skip_timesteps and init_image is None:
             init_image = th.zeros_like(img)
 
-        indices = list(range(self.num_timesteps - skip_timesteps))[::-1]
+        if indices is None:
+            indices = list(range(self.num_timesteps - skip_timesteps))[::-1]
 
         if init_image is not None:
             my_t = th.ones([shape[0]], device=device, dtype=th.long) * indices[0]
@@ -748,7 +759,10 @@ class GaussianDiffusion:
                 noise=noise
             )
             yield out
-            img = out["sample"]
+            if use_mean:
+                img = out['mean']
+            else:
+                img = out["sample"]
 
     def ddim_sample(
         self,
