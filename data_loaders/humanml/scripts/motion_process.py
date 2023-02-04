@@ -3,14 +3,23 @@ from os.path import join as pjoin
 from data_loaders.humanml.common.skeleton import Skeleton
 import numpy as np
 import os
-from data_loaders.humanml.common.quaternion import *
-from data_loaders.humanml.utils.paramUtil import *
+from mdm.data_loaders.humanml.common.quaternion import *
+from mdm.data_loaders.humanml.utils.paramUtil import *
+
+# from data_loaders.humanml.common.quaternion import 
+from mdm.data_loaders.humanml.utils.paramUtil import t2m_raw_offsets, t2m_kinematic_chain
+from mdm.data_loaders.humanml.common.skeleton import Skeleton
+from mdm.dataset.HumanML3D_home.human_body_prior.body_model.body_model import BodyModel
 
 import torch
 from tqdm import tqdm
 
+DIR_HUMANML3D = os.path.join(os.environ['BIO_POSE_ROOT'], 'mdm', 'dataset', 'HumanML3D_home')
+
+
 # positions (batch, joint_num, 3)
-def uniform_skeleton(positions, target_offset):
+def uniform_skeleton(positions, target_offset, n_raw_offsets, kinematic_chain,
+        l_idx1=5, l_idx2=8, face_joint_indx = [2, 1, 17, 16]):
     src_skel = Skeleton(n_raw_offsets, kinematic_chain, 'cpu')
     src_offset = src_skel.get_offsets_joints(torch.from_numpy(positions[0]))
     src_offset = src_offset.numpy()
@@ -166,14 +175,26 @@ def extract_features(positions, feet_thre, n_raw_offsets, kinematic_chain, face_
     return data
 
 
-def process_file(positions, feet_thre):
+def process_file(positions, feet_thre, tgt_offsets, n_raw_offsets, kinematic_chain,
+            l_idx1=5, l_idx2=8, face_joint_indx=[2,1,17,16], fid_r=[8,11], fid_l=[7,10]):
+    """
+    Get th
+    Args: 
+    positions (tensor): sequence of absolute joint positions in xyz coords. 
+    """
     # (seq_len, joints_num, 3)
     #     '''Down Sample'''
     #     positions = positions[::ds_num]
 
     '''Uniform Skeleton'''
-    positions = uniform_skeleton(positions, tgt_offsets)
-
+    positions = uniform_skeleton(
+        positions, 
+        target_offset=tgt_offsets,
+        n_raw_offsets=n_raw_offsets,
+        kinematic_chain=kinematic_chain,
+        l_idx1=l_idx1, l_idx2=l_idx2, face_joint_indx = face_joint_indx,
+        )
+        
     '''Put on Floor'''
     floor_height = positions.min(axis=0).min(axis=0)[1]
     positions[:, :, 1] -= floor_height
@@ -382,7 +403,7 @@ def recover_root_rot_pos(data):
 
 
 def recover_from_rot(data, joints_num, skeleton):
-    r_rot_quat, r_pos = recover_root_rot_pos(data)
+    r_rot_quat, r_pos = recover_root_rot_pos(data) 
 
     r_rot_cont6d = quaternion_to_cont6d(r_rot_quat)
 
@@ -413,11 +434,24 @@ def recover_rot(data):
 
 
 def recover_from_ric(data, joints_num):
-    r_rot_quat, r_pos = recover_root_rot_pos(data)
+    """ 
+    Args: 
+        joints_num: for humanml should be 21 or 22
+        data: shape (B,1,T,J) ... if joints_num=22 then J=263
+    ** shape annotations below assume J=263
+    """
+    # r_rot_quat:(B,1,T,4). Angle with initial value at T=0, [1,0,0,0], the same rotation for everything. 
+    # r_pos:(B,1,T,3). Root position. At T=0, values are [0,Y,0], where Y varies (=data[:4,0,0,3]))
+    r_rot_quat, r_pos = recover_root_rot_pos(data) 
+    # positions:(B,1,T,63). The 63 is xyz coords (relative to root) for 21 non-root joints
     positions = data[..., 4:(joints_num - 1) * 3 + 4]
+    # positions:(B,1,T,21,3). Same as above but reshaped. 
     positions = positions.view(positions.shape[:-1] + (-1, 3))
 
     '''Add Y-axis rotation to local joints'''
+    # Get the 'relative positions' from `data` vector and make them .
+    # `qinv` gets the rotation angle quaternion that would create the root orientaiton. 
+    # Then `qrot` applies that rotation to the positions. 
     positions = qrot(qinv(r_rot_quat[..., None, :]).expand(positions.shape[:-1] + (4,)), positions)
 
     '''Add root XZ to joints'''
