@@ -121,7 +121,7 @@ class HumamnMlConverter(object):
 	    
 	    return pose_seq_np_n 
 
-	def joint_positions_to_humanml3d(self, positions, num_joints=22, axis_scaling=-1.5,
+	def joint_positions_to_humanml3d(self, positions, num_joints=22, axis_scaling=1,
 				 do_z_normalization=True,  motion_mean=None, motion_std=None):
 		"""
 		Map absolute xyz positions of ONE SAMPLE to the HumanML3d 263-dim representation
@@ -136,8 +136,7 @@ class HumamnMlConverter(object):
 			positions: output of `amass_to_joint_positions` shape (T,J,3) It will just truncate the 
 			first 22 joints.  
 			reverse_axes: do_z_normalization
-			axis_scaling: scaler number. HumanML has their axes reversed and scaled down compared to the 
-				standard coordinate system (based on the plot_script function).
+			axis_scaling: scaler number - remove
 		Output:
 			0: data, shape (T-1,263) HumanML3D vectors for the (T-1) frames (one less 
 				frame because of the velocity computation)
