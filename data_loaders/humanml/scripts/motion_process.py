@@ -9,12 +9,13 @@ from mdm.data_loaders.humanml.utils.paramUtil import *
 # from data_loaders.humanml.common.quaternion import 
 from mdm.data_loaders.humanml.utils.paramUtil import t2m_raw_offsets, t2m_kinematic_chain
 from mdm.data_loaders.humanml.common.skeleton import Skeleton
-from mdm.dataset.HumanML3D_home.human_body_prior.body_model.body_model import BodyModel
+# from mdm.dataset.HumanML3D_home.human_body_prior.body_model.body_model import BodyModel
 
 import torch
 from tqdm import tqdm
 
-DIR_HUMANML3D = os.path.join(os.environ['BIO_POSE_ROOT'], 'mdm', 'dataset', 'HumanML3D_home')
+DIR_HUMANML3D=''
+# DIR_HUMANML3D = os.path.join(os.environ['BIO_POSE_ROOT'], 'mdm', 'dataset', 'HumanML3D_home')
 
 
 # positions (batch, joint_num, 3)
@@ -401,6 +402,22 @@ def recover_root_rot_pos(data):
     r_pos[..., 1] = data[..., 3]
     return r_rot_quat, r_pos
 
+
+def humanml3d_to_rot6d(data, joints_num=21):
+    N, _, _, T = data.shape
+    data = data.squeeze(2).permute(0, 2, 1)
+
+    r_rot_quat, r_pos = recover_root_rot_pos(data) 
+
+    r_rot_cont6d = quaternion_to_cont6d(r_rot_quat)
+
+    start_indx = 1 + 2 + 1 + (joints_num - 1) * 3
+    end_indx = start_indx + (joints_num - 1) * 6
+    cont6d_params = data[..., start_indx:end_indx]
+    #     print(r_rot_cont6d.shape, cont6d_params.shape, r_pos.shape)
+    cont6d_params = torch.cat([r_rot_cont6d, cont6d_params], dim=-1)
+    cont6d_params = cont6d_params.view(-1, joints_num, 6)
+    return cont6d_params.reshape(N, T, joints_num, 6)
 
 def recover_from_rot(data, joints_num, skeleton):
     r_rot_quat, r_pos = recover_root_rot_pos(data) 
