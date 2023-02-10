@@ -302,7 +302,6 @@ class GaussianDiffusion:
 
         B, C = x.shape[:2]
         assert t.shape == (B,)
-
         model_output = model(x, self._scale_timesteps(t), **model_kwargs)
 
         if 'inpainting_mask' in model_kwargs['y'].keys() and 'inpainted_motion' in model_kwargs['y'].keys():
@@ -743,7 +742,6 @@ class GaussianDiffusion:
                 model_kwargs['y'] = th.randint(low=0, high=model.num_classes,
                                                size=model_kwargs['y'].shape,
                                                device=model_kwargs['y'].device)
-            # ipdb.set_trace()
             # with th.no_grad():
             sample_fn = self.p_sample_with_grad if cond_fn_with_grad else self.p_sample
             out = sample_fn(
@@ -1276,7 +1274,9 @@ class GaussianDiffusion:
         # enc = model.model._modules['module']
         enc = model.model
         mask = model_kwargs['y']['mask']
-        get_xyz = lambda sample: enc.rot2xyz(sample, mask=None, pose_rep=enc.pose_rep, translation=enc.translation,
+
+        get_xyz = lambda sample: enc.rot2xyz(sample, mask=None, pose_rep=enc.pose_rep, 
+                                            translation=enc.translation,
                                              glob=enc.glob,
                                              # jointstype='vertices',  # 3.4 iter/sec # USED ALSO IN MotionCLIP
                                              jointstype='smpl',  # 3.4 iter/sec
@@ -1345,7 +1345,7 @@ class GaussianDiffusion:
                 terms["rcxyz_mse"] = self.masked_l2(target_xyz, model_output_xyz, mask)  # mean_flat((target_xyz - model_output_xyz) ** 2)
 
             if self.lambda_vel_rcxyz > 0.:
-                if self.data_rep == 'rot6d' and dataset.dataname in ['humanact12', 'uestc']:
+                if self.data_rep == 'rot6d' and dataset.dataname in ['humanact12', 'uestc', 'amass']:
                     target_xyz = get_xyz(target) if target_xyz is None else target_xyz
                     model_output_xyz = get_xyz(model_output) if model_output_xyz is None else model_output_xyz
                     target_xyz_vel = (target_xyz[:, :, :, 1:] - target_xyz[:, :, :, :-1])
@@ -1354,7 +1354,7 @@ class GaussianDiffusion:
 
             if self.lambda_fc > 0.:
                 torch.autograd.set_detect_anomaly(True)
-                if self.data_rep == 'rot6d' and dataset.dataname in ['humanact12', 'uestc']:
+                if self.data_rep == 'rot6d' and dataset.dataname in ['humanact12', 'uestc', 'amass']:
                     target_xyz = get_xyz(target) if target_xyz is None else target_xyz
                     model_output_xyz = get_xyz(model_output) if model_output_xyz is None else model_output_xyz
                     # 'L_Ankle',  # 7, 'R_Ankle',  # 8 , 'L_Foot',  # 10, 'R_Foot',  # 11

@@ -403,6 +403,7 @@ def recover_root_rot_pos(data):
 
 
 def recover_from_rot(data, joints_num, skeleton):
+    # input shape (N,T,263)
     r_rot_quat, r_pos = recover_root_rot_pos(data) 
 
     r_rot_cont6d = quaternion_to_cont6d(r_rot_quat)
@@ -417,6 +418,21 @@ def recover_from_rot(data, joints_num, skeleton):
     positions = skeleton.forward_kinematics_cont6d(cont6d_params, r_pos)
 
     return positions
+
+def recover_cont6d_from_humamml(data, joints_num=22):
+    # input shape (N,T,263)
+    r_rot_quat, r_pos = recover_root_rot_pos(data) 
+
+    r_rot_cont6d = quaternion_to_cont6d(r_rot_quat)
+
+    start_indx = 1 + 2 + 1 + (joints_num - 1) * 3
+    end_indx = start_indx + (joints_num - 1) * 6
+    cont6d_params = data[..., start_indx:end_indx]
+    #     print(r_rot_cont6d.shape, cont6d_params.shape, r_pos.shape)
+    cont6d_params = torch.cat([r_rot_cont6d, cont6d_params], dim=-1)
+    cont6d_params = cont6d_params.view(-1, joints_num, 6)
+
+    return cont6d_params
 
 def recover_rot(data):
     # dataset [bs, seqlen, 263/251] HumanML/KIT

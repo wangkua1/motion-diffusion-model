@@ -38,7 +38,7 @@ class HumamnMlConverter(object):
 		# # Right/Left foot
 		# self.fid_r, self.fid_l = [8, 11], [7, 10]
 		# # Face direction, r_hip, l_hip, sdr_r, sdr_l
-		# self.face_joint_indx = [2, 1, 17, 16]
+		self.face_joint_indx = [2, 1, 17, 16]
 		# # l_hip, r_hip
 		# self.r_hip, self.l_hip = 2, 1
 		self.joints_num = 22
@@ -51,8 +51,8 @@ class HumamnMlConverter(object):
 		example_data = np.load(os.path.join(DIR_HUMANML3D_HOME, "joints", example_id))
 		example_data = example_data.reshape(len(example_data), -1, 3)
 		example_data = torch.from_numpy(example_data)
-		tgt_skel = Skeleton(self.n_raw_offsets, self.kinematic_chain, 'cpu')
-		self.tgt_offsets = tgt_skel.get_offsets_joints(example_data[0])
+		self.tgt_skel = Skeleton(self.n_raw_offsets, self.kinematic_chain, 'cpu')
+		self.tgt_offsets = self.tgt_skel.get_offsets_joints(example_data[0])
 
 	def load_body_model(self):
 		if hasattr(self, "male_bm"):
@@ -86,7 +86,7 @@ class HumamnMlConverter(object):
 			positions: (np.array) shape (T,J,3), where J=22+30=52 (22 body, 30 hands)
 				Global xyz positions of the joints.
 	    """
-	    load_body_model()
+	    self.load_body_model()
 	    try:
 	        fps = bdata['mocap_framerate']
 	        frame_number = bdata['trans'].shape[0]
@@ -181,7 +181,7 @@ class HumamnMlConverter(object):
 
 		return data, global_positions, positions, l_velocity
 
-	def humanml3d_to_joint_positions(self, sample):
+	def humanml3d_to_joint_positions(self, sample, return_root_info=False):
 		"""
 		Convert humanml3d to absolute joint positions
 		
@@ -195,9 +195,11 @@ class HumamnMlConverter(object):
 		r_rot_quat, r_pos = motion_process.recover_root_rot_pos(sample)  # r_pos is xyz position
 		sample = motion_process.recover_from_ric(sample, self.joints_num)
 		sample = sample.view(-1, *sample.shape[2:]).permute(0, 2, 3, 1)
-
-		return sample.numpy()
-
+		
+		if return_root_info:
+			return sample.numpy(), r_rot_quat, r_pos
+		else: 
+			return sample.numpy()
 
 	def inv_transform_z_normalization(self, motion,):
 		"""
@@ -235,19 +237,17 @@ class HumamnMlConverter(object):
 		root translation information in any of its 
 
 		Keep in the the same frame rate.
-		Input motion (N,J=263,1,T)
+		Args:
+			sampleInput motion (N,J=263,1,T)
+
 
 		"""	
-		# n_joints = self.num_joints
-		# sample = self.inv_transform_z_normalization(sample.cpu().permute(0, 2, 3, 1)).float()
-		# r_rot_quat, r_pos = motion_process.recover_root_rot_pos(sample)  # r_pos is xyz position
-		# sample = motion_process.recover_from_ric(sample, n_joints)
-		# sample = sample.view(-1, *sample.shape[2:]).permute(0, 2, 3, 1)
+		# recover xyz positions, and root positions
+		positions_global, r_rot_quat, r_pos = self.humanml3d_to_joint_positions(sample, return_root_info=True)
 
-		positions_global = self.humanml3d_to_joint_positions(sample)
 		# now remove trajectory
 		r_pos = r_pos.permute(0,1,3,2)
-		r_pos = r_pos.expand(r_pos.shape[0], n_joints, *r_pos.shape[2:]).numpy()
+		r_pos = r_pos.expand(r_pos.shape[0], self.joints_num, *r_pos.shape[2:]).numpy()
 		positions_global_traj_removed = (positions_global - r_pos)
 
 		# convert back to humanml3d. joint_positions_to_humanml3d func expects shape (T,22,3)
@@ -262,6 +262,72 @@ class HumamnMlConverter(object):
 		data = torch.cat((data, data[...,[-1]]), dim=-1)
 
 		return data
+
+
+
+def get_sample_amass_data(paths_amass_source, do_z_normalization=True, 
+		motion_mean=None, motion_std=None, max_frames=120):
+	"""
+	Given a list of paths to AMASS original (in SMPL+H format), get the pose sequence in HumanML format. 
+	Also create a copy where the root translation is set to 0 while in AMASS format before converting to HumanML. 
+	Function is slow (a few second per sample). 
+
+	A lot of details are hidden in the 2 functions of the `SmplhPoseToHumanML3DPose` class. 
+	Args: 
+		paths_amass_source: list of paths to the `.npz` files in amass format. 
+		do_z_normalize: z-normalize each humanml3d vector (this is done during MMD training for example). 
+		motion_mean: the mean for z-normalization. If `do_z_normalize=True` it must be set.
+		motion_std: the std for z-normalization. If `do_z_normalize=True` it must be set.
+		max_frames: all motions are set to this frame length. If shorter, pad 0s. If longer take the first `max_frmames`.
+	"""
+	pose_converter = HumamnMlConverter()
+	motion_ = []
+	motion_traj_removed_ = []
+	motion_amass_format_ = []
+	paths_amass_source_ = []
+	motion_positions_from_amass = []
+
+	# default normalization params 
+	if do_z_normalization and ((motion_mean is None) or (motion_std is None)): 
+		motion_mean = np.load(os.path.join(DIR_HUMANML3D, 'Mean.npy'))
+		motion_std = np.load(os.path.join(DIR_HUMANML3D, 'Std.npy'))
+
+	for i in tqdm.trange(len(paths_amass_source)):
+		try: 
+			motion_amass_format = np.load(paths_amass_source[i])
+		except: 
+			print("failed to load ", i, paths_amass_source[i])
+			continue
+		motion_amass_format_.append(motion_amass_format)
+		paths_amass_source_.append(paths_amass_source[i])
+
+		motion = pose_converter.amass_to_joint_positions(motion_amass_format, remove_traslation=False)
+		motion_positions_from_amass.append(motion.copy())
+
+		motion_traj_removed = pose_converter.amass_to_joint_positions(motion_amass_format, remove_traslation=True)
+		motion, global_positions, positions, l_velocity = pose_converter.joint_positions_to_humanml3d(motion, 
+			do_z_normalization=do_z_normalization, motion_mean=motion_mean, motion_std=motion_std)
+		motion_traj_removed, global_positions_traj_removed, positions_traj_removed, l_velocity_traj_removed = pose_converter.joint_positions_to_humanml3d(motion_traj_removed, 
+			do_z_normalization=do_z_normalization, motion_mean=motion_mean, motion_std=motion_std)
+		m_length = motion.shape[0]
+		motion = motion[:max_frames]
+		motion_traj_removed = motion_traj_removed[:max_frames]
+		if m_length <max_frames:
+			motion = np.concatenate([motion,np.zeros((max_frames - m_length, motion.shape[1]))], axis=0) 
+			motion_traj_removed = np.concatenate([motion_traj_removed,np.zeros((max_frames - m_length, motion.shape[1]))], axis=0) 
+
+		motion_.append(motion)
+		motion_traj_removed_.append(motion_traj_removed)
+
+	N = len(motion_)    # since some reads will fail
+	motion = np.stack(motion_, axis=0)
+	motion_traj_removed = np.stack(motion_traj_removed_, axis=0)
+	
+	# change shape from is (T,266) --> (1,263,1,T)
+	motion_humanml = torch.Tensor(motion).permute(0,2,1).unsqueeze(2)
+	motion_traj_removed_humanml = torch.Tensor(motion_traj_removed).permute(0,2,1).unsqueeze(2)
+
+	return motion_humanml, motion_traj_removed_humanml, motion_amass_format_, paths_amass_source_, motion_positions_from_amass
 
 
 if __name__=="__main__":

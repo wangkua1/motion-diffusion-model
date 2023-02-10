@@ -103,7 +103,9 @@ def add_model_options(parser):
 
 def add_data_options(parser):
     group = parser.add_argument_group('dataset')
-    group.add_argument("--dataset", default='humanml', choices=['humanml', 'kit', 'humanact12', 'uestc'], type=str,
+    group.add_argument("--dataset", default='humanml', 
+          # choices=['humanml', 'kit', 'humanact12', 'uestc','amass'], 
+          type=str,
                        help="Dataset name (choose from list).")
     group.add_argument("--data_dir", default="", type=str,
                        help="If empty, will use defaults according to the specified dataset.")
@@ -133,7 +135,7 @@ def add_training_options(parser):
                        help="If -1, will use all samples in the specified split.")
     group.add_argument("--log_interval", default=1_000, type=int,
                        help="Log losses each N steps")
-    group.add_argument("--save_interval", default=50_000, type=int,
+    group.add_argument("--save_interval", default=10_000, type=int,
                        help="Save checkpoints and run evaluation each N steps")
     group.add_argument("--num_steps", default=600_000, type=int,
                        help="Training will stop after the specified number of steps.")

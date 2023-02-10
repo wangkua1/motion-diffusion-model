@@ -33,10 +33,10 @@ class HumanAct12Poses(Dataset):
 
         self._action_classes = humanact12_coarse_action_enumerator
 
-    def _load_joints3D(self, ind, frame_ix):
+    def _load_joints3D(self, ind, frame_ix): # 3d joint positions
         return self._joints[ind][frame_ix]
 
-    def _load_rotvec(self, ind, frame_ix):
+    def _load_rotvec(self, ind, frame_ix): # 3d joints angles (in axis angles)
         pose = self._pose[ind][frame_ix].reshape(-1, 24, 3)
         return pose
 

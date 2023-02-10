@@ -3,9 +3,9 @@ from data_loaders.tensors import collate as all_collate
 from data_loaders.tensors import t2m_collate
 
 def get_dataset_class(name):
-    if name == "amass":
-        from .amass import AMASS
-        return AMASS
+    if "amass" in name:
+        from VIBE.lib.dataset import amass_a2m
+        return amass_a2m.AMASS
     elif name == "uestc":
         from .a2m.uestc import UESTC
         return UESTC
@@ -35,12 +35,17 @@ def get_dataset(name, num_frames, split='train', hml_mode='train'):
     DATA = get_dataset_class(name)
     if name in ["humanml", "kit"]:
         dataset = DATA(split=split, num_frames=num_frames, mode=hml_mode)
+    elif ('amass' in name) and name!="amass":
+        # Case where we take subsets of amass. 
+        # Expect subdataset structure to be like "amass:KIT,CMU,HumanEva"
+        restrict_subsets=name[6:].split(",")
+        dataset = DATA(split=split, num_frames=num_frames, restrict_subsets=restrict_subsets)
     else:
         dataset = DATA(split=split, num_frames=num_frames)
     return dataset
 
 
-def get_dataset_loader(name, batch_size, num_frames, split='train', hml_mode='train'):
+def get_dataset_loader(name, batch_size, num_frames, split='train', hml_mode='train', **kwargs):
     dataset = get_dataset(name, num_frames, split, hml_mode)
     collate = get_collate_fn(name, hml_mode)
 

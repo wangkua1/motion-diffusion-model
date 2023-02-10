@@ -3,20 +3,20 @@
 Generate a large batch of image samples from a model and save them as a large
 numpy array. This can be used to produce samples for FID evaluation.
 """
-from utils.fixseed import fixseed
+from mdm.utils.fixseed import fixseed
 import os
 import numpy as np
 import torch
-from utils.parser_util import generate_args
-from utils.model_util import create_model_and_diffusion, load_model_wo_clip
-from utils import dist_util
-from model.cfg_sampler import ClassifierFreeSampleModel
-from data_loaders.get_data import get_dataset_loader
-from data_loaders.humanml.scripts.motion_process import recover_from_ric
-import data_loaders.humanml.utils.paramUtil as paramUtil
-from data_loaders.humanml.utils.plot_script import plot_3d_motion
+from mdm.utils.parser_util import generate_args
+from mdm.utils.model_util import create_model_and_diffusion, load_model_wo_clip
+from mdm.utils import dist_util
+from mdm.model.cfg_sampler import ClassifierFreeSampleModel
+from mdm.data_loaders.get_data import get_dataset_loader
+from mdm.data_loaders.humanml.scripts.motion_process import recover_from_ric
+import mdm.data_loaders.humanml.utils.paramUtil as paramUtil
+from mdm.data_loaders.humanml.utils.plot_script import plot_3d_motion
 import shutil
-from data_loaders.tensors import collate
+from mdm.data_loaders.tensors import collate
 import ipdb
 
 def main():
@@ -68,6 +68,7 @@ def main():
 
     print('Loading dataset...')
     data = load_dataset(args, max_frames, n_frames)
+
     total_num_samples = args.num_samples * args.num_repetitions
 
     print("Creating model and diffusion...")
@@ -106,25 +107,33 @@ def main():
         print(f'### Sampling [repetitions #{rep_i}]')
 
         # add CFG scale to batch
+
         if args.guidance_param != 1:
             model_kwargs['y']['scale'] = torch.ones(args.batch_size, device=dist_util.dev()) * args.guidance_param
+        
+        # # setting unconditional 
+        # if 1:
+        #     model_kwargs['y']['text'] = ['']*len(model_kwargs['y']['text'])
+        #     args.guidance_param = 0.
+        #     model.cond_mode = "no_cond"
+
 
         sample_fn = diffusion.p_sample_loop
 
-        sample = sample_fn(
-            model,
-            (args.batch_size, model.njoints, model.nfeats, n_frames),
-            clip_denoised=False,
-            model_kwargs=model_kwargs,
-            skip_timesteps=0,  # 0 is the default value - i.e. don't skip any step
-            init_image=None,
-            progress=True,
-            dump_steps=None,
-            noise=None,
-            const_noise=False,
-        )
+        with torch.no_grad():
+            sample = sample_fn(
+                model,
+                (args.batch_size, model.njoints, model.nfeats, n_frames),
+                clip_denoised=False,
+                model_kwargs=model_kwargs,
+                skip_timesteps=0,  # 0 is the default value - i.e. don't skip any step
+                init_image=None,
+                progress=True,
+                dump_steps=None,
+                noise=None,
+                const_noise=False,
+            )
 
-        # ipdb.set_trace()
         # Recover XYZ *positions* from HumanML3D vector representation
         if model.data_rep == 'hml_vec':
             n_joints = 22 if sample.shape[1] == 263 else 21
@@ -187,6 +196,8 @@ def main():
             save_file = sample_file_template.format(sample_i, rep_i)
             print(sample_print_template.format(caption, sample_i, rep_i, save_file))
             animation_save_path = os.path.join(out_path, save_file)
+
+            # args.dataset='amass'
             plot_3d_motion(animation_save_path, skeleton, motion, dataset=args.dataset, title=caption, fps=fps)
             # Credit for visualization: https://github.com/EricGuo5513/text-to-motion
             rep_files.append(animation_save_path)
