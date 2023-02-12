@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import os 
+import os
 import ipdb
 import torch
 import tqdm
@@ -17,8 +17,12 @@ from mdm.data_loaders.humanml.scripts.motion_process import process_file
 from mdm.data_loaders.humanml.scripts import motion_process
 
 from mdm.data_loaders.get_data import get_dataset_loader
-DIR_HUMANML3D_HOME = os.path.join(os.environ['BIO_POSE_ROOT'], 'mdm', 'dataset', 'HumanML3D_home')
-DIR_HUMANML3D = os.path.join(os.environ['BIO_POSE_ROOT'], 'mdm', 'dataset', 'HumanML3D')
+
+DIR_HUMANML3D_HOME = os.path.join(os.environ['BIO_POSE_ROOT'], 'mdm',
+                                  'dataset', 'HumanML3D_home')
+DIR_HUMANML3D = os.path.join(os.environ['BIO_POSE_ROOT'], 'mdm', 'dataset',
+                             'HumanML3D')
+from nemo.utils.misc_utils import to_np, to_tensor
 
 
 class HumamnMlConverter(object):
@@ -382,4 +386,3 @@ if __name__=="__main__":
 
 		import ipdb; ipdb.set_trace()
 
-	pass

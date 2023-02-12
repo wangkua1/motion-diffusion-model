@@ -740,7 +740,7 @@ class HumanML3D(data.Dataset):
         # opt.meta_dir = dataset_opt_path # JB changed this 'mdm/dataset'
         opt.meta_dir = "./mdm/dataset"
         self.opt = opt
-        import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         print('Loading dataset %s ...' % opt.dataset_name)
 
         if mode == 'gt':    
