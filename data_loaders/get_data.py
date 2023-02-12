@@ -31,10 +31,10 @@ def get_collate_fn(name, hml_mode='train'):
         return all_collate
 
 
-def get_dataset(name, num_frames, split='train', hml_mode='train'):
+def get_dataset(name, num_frames, split='train', hml_mode='train', no_motion_augmentation=False):
     DATA = get_dataset_class(name)
     if name in ["humanml", "kit"]:
-        dataset = DATA(split=split, num_frames=num_frames, mode=hml_mode)
+        dataset = DATA(split=split, num_frames=num_frames, mode=hml_mode, no_motion_augmentation=no_motion_augmentation)
     elif ('amass' in name) and name!="amass":
         # Case where we take subsets of amass. 
         # Expect subdataset structure to be like "amass:KIT,CMU,HumanEva"
@@ -45,8 +45,8 @@ def get_dataset(name, num_frames, split='train', hml_mode='train'):
     return dataset
 
 
-def get_dataset_loader(name, batch_size, num_frames, split='train', hml_mode='train', **kwargs):
-    dataset = get_dataset(name, num_frames, split, hml_mode)
+def get_dataset_loader(name, batch_size, num_frames, split='train', hml_mode='train', no_motion_augmentation=False):
+    dataset = get_dataset(name, num_frames, split, hml_mode, no_motion_augmentation=no_motion_augmentation)
     collate = get_collate_fn(name, hml_mode)
 
     loader = DataLoader(

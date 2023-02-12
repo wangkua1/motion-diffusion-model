@@ -89,7 +89,6 @@ class Text2MotionDataset(data.Dataset):
                 # Some motion may not exist in KIT dataset
                 pass
 
-
         name_list, length_list = zip(*sorted(zip(new_name_list, length_list), key=lambda x: x[1]))
 
         if opt.is_train:
@@ -205,7 +204,7 @@ class Text2MotionDataset(data.Dataset):
 
 '''For use of training text motion matching model, and evaluations'''
 class Text2MotionDatasetV2(data.Dataset):
-    def __init__(self, opt, mean, std, split_file, w_vectorizer):
+    def __init__(self, opt, mean, std, split_file, w_vectorizer, no_motion_augmentation=False):
         self.opt = opt
         self.w_vectorizer = w_vectorizer
         self.max_length = 20
@@ -215,13 +214,19 @@ class Text2MotionDatasetV2(data.Dataset):
 
         data_dict = {}
         id_list = []
+        if no_motion_augmentation:
+            print("   Flag no_motion_augmentation set. Canceling flipped motion data augmentations.")
         with cs.open(split_file, 'r') as f:
             for line in f.readlines():
+                # if flagged, skip the reflected images which are id's
+                if no_motion_augmentation and line[0]=="M":
+                    continue
                 id_list.append(line.strip())
         # id_list = id_list[:200]
 
         new_name_list = []
         length_list = []
+
         for name in tqdm(id_list):
             try:
                 motion = np.load(pjoin(opt.motion_dir, name + '.npy'))
@@ -719,12 +724,13 @@ class TextOnlyDataset(data.Dataset):
 
 # A wrapper class for t2m original dataset for MDM purposes
 class HumanML3D(data.Dataset):
-    def __init__(self, mode, datapath='./dataset/humanml_opt.txt', split="train", **kwargs):
+    def __init__(self, mode, datapath='./dataset/humanml_opt.txt', split="train", 
+        no_motion_augmentation=False, **kwargs):
         self.mode = mode
         self.dataset_name = 't2m'
         self.dataname = 't2m'
+        self.no_motion_augmentation = no_motion_augmentation
         
-
         # Configurations of T2M dataset and KIT dataset is almost the same
         abs_base_path = f'./mdm/'       # JB added 
         dataset_opt_path = pjoin(abs_base_path, datapath)
@@ -740,7 +746,7 @@ class HumanML3D(data.Dataset):
         # opt.meta_dir = dataset_opt_path # JB changed this 'mdm/dataset'
         opt.meta_dir = "./mdm/dataset"
         self.opt = opt
-        import ipdb; ipdb.set_trace()
+
         print('Loading dataset %s ...' % opt.dataset_name)
 
         if mode == 'gt':    
@@ -763,7 +769,7 @@ class HumanML3D(data.Dataset):
             self.t2m_dataset = TextOnlyDataset(self.opt, self.mean, self.std, self.split_file)
         else:
             self.w_vectorizer = WordVectorizer(pjoin(abs_base_path, 'glove'), 'our_vab')
-            self.t2m_dataset = Text2MotionDatasetV2(self.opt, self.mean, self.std, self.split_file, self.w_vectorizer)
+            self.t2m_dataset = Text2MotionDatasetV2(self.opt, self.mean, self.std, self.split_file, self.w_vectorizer, no_motion_augmentation=no_motion_augmentation)
             self.num_actions = 1 # dummy placeholder
 
         assert len(self.t2m_dataset) > 1, 'You loaded an empty dataset, ' \
