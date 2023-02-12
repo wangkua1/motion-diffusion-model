@@ -450,7 +450,7 @@ def recover_rot(data):
     return cont6d_params
 
 
-def recover_from_ric(data, joints_num):
+def recover_from_ric(data, joints_num, no_root=False):
     """ 
     Args: 
         joints_num: for humanml should be 21 or 22
@@ -460,6 +460,11 @@ def recover_from_ric(data, joints_num):
     # r_rot_quat:(B,1,T,4). Angle with initial value at T=0, [1,0,0,0], the same rotation for everything. 
     # r_pos:(B,1,T,3). Root position. At T=0, values are [0,Y,0], where Y varies (=data[:4,0,0,3]))
     r_rot_quat, r_pos = recover_root_rot_pos(data) 
+    if no_root:
+        # r_pos = torch.zeros_like(r_pos)
+        r_pos[..., 0] = 0
+        r_pos[..., 2] = 0
+        
     # positions:(B,1,T,63). The 63 is xyz coords (relative to root) for 21 non-root joints
     positions = data[..., 4:(joints_num - 1) * 3 + 4]
     # positions:(B,1,T,21,3). Same as above but reshaped. 

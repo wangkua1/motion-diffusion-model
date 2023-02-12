@@ -209,7 +209,7 @@ class HumamnMlConverter(object):
 
         return data, global_positions, positions, l_velocity
 
-    def humanml3d_to_joint_positions(self, sample):
+    def humanml3d_to_joint_positions(self, sample, no_root=False):
         """
         Convert humanml3d to absolute joint positions
 
@@ -223,7 +223,7 @@ class HumamnMlConverter(object):
             0, 2, 3, 1)).float()
         r_rot_quat, r_pos = motion_process.recover_root_rot_pos(
             sample)  # r_pos is xyz position
-        sample = motion_process.recover_from_ric(sample, self.joints_num)
+        sample = motion_process.recover_from_ric(sample, self.joints_num, no_root=no_root)
         sample = sample.view(-1, *sample.shape[2:]).permute(0, 2, 3, 1)
 
         return sample  # .numpy()
