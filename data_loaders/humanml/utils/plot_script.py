@@ -63,7 +63,7 @@ def plot_3d_motion(save_path, kinematic_tree, joints, title, dataset, figsize=(3
     elif dataset in ['humanact12', 'uestc']:
         data *= -1.5 # reverse axes, scale for visualization
     elif dataset in ['amass']:
-        data *= -1. # reverse axes, scale for visualization
+        data *= 1. # reverse axes, scale for visualization
 
     fig = plt.figure(figsize=figsize)
     plt.tight_layout()
