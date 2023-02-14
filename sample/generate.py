@@ -38,6 +38,8 @@ def main():
         elif args.input_text != '':
             out_path += '_' + os.path.basename(args.input_text).replace('.txt', '').replace(' ', '_').replace('.', '')
 
+    # if args.cond_mode in ["text","action"]:
+    #     args.guidance_param=1 # force unconditional 
     # this block must be called BEFORE the dataset is loaded
     if args.text_prompt != '':
         texts = [args.text_prompt]
@@ -78,7 +80,8 @@ def main():
     state_dict = torch.load(args.model_path, map_location='cpu')
     load_model_wo_clip(model, state_dict)
 
-    if args.guidance_param != 1:
+    model.cond_mode="no_cond"
+    if args.guidance_param != 1 and model.cond_mode!="no_cond": # only do cfgsampler for conditional models
         model = ClassifierFreeSampleModel(model)   # wrapping model with the classifier-free sampler
     model.to(dist_util.dev())
     model.eval()  # disable random masking

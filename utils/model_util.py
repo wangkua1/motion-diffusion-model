@@ -24,6 +24,8 @@ def get_model_args(args, data):
         cond_mode = 'no_cond'
     elif args.dataset in ['kit', 'humanml']:
         cond_mode = 'text'
+    elif args.dataset in ['h36m']:
+        cond_mode = 'video'
     else:
         cond_mode = 'action'
     if hasattr(data.dataset, 'num_actions'):

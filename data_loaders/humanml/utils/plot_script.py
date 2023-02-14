@@ -64,6 +64,8 @@ def plot_3d_motion(save_path, kinematic_tree, joints, title, dataset, figsize=(3
         data *= -1.5 # reverse axes, scale for visualization
     elif dataset in ['amass']:
         data *= 1. # reverse axes, scale for visualization
+    elif dataset in ['h36m']:
+        data *= -1. # reverse axes
 
     fig = plt.figure(figsize=figsize)
     plt.tight_layout()
@@ -173,6 +175,8 @@ def plot_3d_motion_v2(save_path, kinematic_tree, joints, title, dataset, figsize
         data *= -1.5 # reverse axes, scale for visualization
     elif dataset in ['amass']:
         data *= 1.0 # no change
+    elif dataset in ['h36m']:
+        data *= -1. # reverse axes
 
     fig = plt.figure(figsize=figsize)
     plt.tight_layout()

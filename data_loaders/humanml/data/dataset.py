@@ -205,6 +205,7 @@ class Text2MotionDataset(data.Dataset):
 '''For use of training text motion matching model, and evaluations'''
 class Text2MotionDatasetV2(data.Dataset):
     def __init__(self, opt, mean, std, split_file, w_vectorizer, no_motion_augmentation=False):
+        import ipdb; ipdb.set_trace()
         self.opt = opt
         self.w_vectorizer = w_vectorizer
         self.max_length = 20
@@ -725,7 +726,7 @@ class TextOnlyDataset(data.Dataset):
 # A wrapper class for t2m original dataset for MDM purposes
 class HumanML3D(data.Dataset):
     def __init__(self, mode, datapath='./dataset/humanml_opt.txt', split="train", 
-        no_motion_augmentation=False, **kwargs):
+        no_motion_augmentation=False, use_amass_cont6d=False, **kwargs):
         self.mode = mode
         self.dataset_name = 't2m'
         self.dataname = 't2m'
@@ -746,6 +747,12 @@ class HumanML3D(data.Dataset):
         # opt.meta_dir = dataset_opt_path # JB changed this 'mdm/dataset'
         opt.meta_dir = "./mdm/dataset"
         self.opt = opt
+
+        if use_amass_cont6d:
+            # need to change `opt.data_root` 
+            # change the Mean and STD thing to point at. 
+            pass 
+
 
         print('Loading dataset %s ...' % opt.dataset_name)
 

@@ -68,6 +68,9 @@ def add_base_options(parser):
     group.add_argument("--batch_size", default=64, type=int, help="Batch size during training.")
     group.add_argument("--no_motion_augmentation", action='store_true',  
                        help="Turn off data augmentation for humanml model")
+    group.add_argument("--use_amass_cont6d", action='store_true',  
+                       help="Turn off data augmentation for humanml model")
+    
 
 
 def add_diffusion_options(parser):
