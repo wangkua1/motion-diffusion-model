@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import clip
 from model.rotation2xyz import Rotation2xyz
-# from gthmr.lib.models import TemporalEncoder
+from gthmr.lib.models.vibe_component import TemporalEncoder
 import ipdb
 
 
