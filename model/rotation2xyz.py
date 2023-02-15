@@ -75,7 +75,7 @@ class Rotation2xyz:
         x_xyz[~mask] = 0
         x_xyz[mask] = joints
 
-        x_xyz = x_xyz.permute(0, 2, 3, 1).contiguous()
+        x_xyz = x_xyz.permute(0, 2, 3, 1).contiguous() # (B, J, 3, T)
 
         # the first translation root at the origin on the prediction
         if jointstype != "vertices":
