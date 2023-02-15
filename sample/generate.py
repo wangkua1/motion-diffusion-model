@@ -80,7 +80,7 @@ def main():
     state_dict = torch.load(args.model_path, map_location='cpu')
     load_model_wo_clip(model, state_dict)
 
-    model.cond_mode="no_cond"
+    # model.cond_mode="no_cond"
     if args.guidance_param != 1 and model.cond_mode!="no_cond": # only do cfgsampler for conditional models
         model = ClassifierFreeSampleModel(model)   # wrapping model with the classifier-free sampler
     model.to(dist_util.dev())

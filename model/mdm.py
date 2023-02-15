@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import clip
 from model.rotation2xyz import Rotation2xyz
+# from gthmr.lib.models import TemporalEncoder
 import ipdb
 
 
@@ -12,7 +13,7 @@ class MDM(nn.Module):
     def __init__(self, modeltype, njoints, nfeats, num_actions, translation, pose_rep, glob, glob_rot,
                  latent_dim=256, ff_size=1024, num_layers=8, num_heads=4, dropout=0.1,
                  ablation=None, activation="gelu", legacy=False, data_rep='rot6d', dataset='amass', clip_dim=512,
-                 arch='trans_enc', emb_trans_dec=False, clip_version=None, video_dim=2048, **kargs):
+                 arch='trans_enc', emb_trans_dec=False, clip_version=None, video_dim=2048, video_arch='linear', **kargs):
         super().__init__()
 
         self.legacy = legacy
@@ -100,7 +101,10 @@ class MDM(nn.Module):
                 self.embed_action = EmbedAction(self.num_actions, self.latent_dim)
                 print('EMBED ACTION')
             if 'video' in self.cond_mode:
-                self.embed_video = EmbedVideo(self.video_dim, self.latent_dim)
+                if video_arch=='linear':
+                    self.embed_video = EmbedVideoLinear(self.video_dim, self.latent_dim)
+                elif video_arch=='vibe': # for now just hard code parameters. 
+                    self.embed_video = EmbedVideoLinear(self.video_dim, self.latent_dim)
                 print("EMBED VIDEO")
 
         self.output_process = OutputProcess(self.data_rep, self.input_feats, self.latent_dim, self.njoints,
@@ -322,8 +326,26 @@ class EmbedAction(nn.Module):
         output = self.action_embedding[idx]
         return output
 
-class EmbedVideo(nn.Module):
-    def __init__(self, video_dim, latent_dim):
+class EmbedVideoLinear(nn.Module):
+    def __init__(self, video_dim, latent_dim, arch='linear'):
+        """
+        mode options
+            'arch': a single linear layer projection. 
+            'vibe': vibe-style encoder with GRUs+regressor
+        """
+        super().__init__()
+        self.fc = nn.Linear(video_dim, latent_dim)
+
+    def forward(self, input):
+        return self.fc(input)
+
+class EmbedVideoVibe(nn.Module):
+    def __init__(self, video_dim, latent_dim, arch='linear'):
+        """
+        mode options
+            'arch': a single linear layer projection. 
+            'vibe': vibe-style encoder with GRUs+regressor
+        """
         super().__init__()
         self.fc = nn.Linear(video_dim, latent_dim)
 

@@ -1,6 +1,6 @@
-from model.mdm import MDM
-from diffusion import gaussian_diffusion as gd
-from diffusion.respace import SpacedDiffusion, space_timesteps
+from mdm.model.mdm import MDM
+from mdm.diffusion import gaussian_diffusion as gd
+from mdm.diffusion.respace import SpacedDiffusion, space_timesteps
 
 
 def load_model_wo_clip(model, state_dict):

@@ -182,6 +182,8 @@ def add_generate_options(parser):
                        help="A text prompt to be generated. If empty, will take text prompts from dataset.")
     group.add_argument("--action_name", default='', type=str,
                        help="An action name to be generated. If empty, will take text prompts from dataset.")
+    group.add_argument("--condition_split", default='test', type=str,
+                       help="Which dataset split to take for conditinoing (test/action/video")
 
 
 def add_edit_options(parser):
