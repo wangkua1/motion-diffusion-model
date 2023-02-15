@@ -1,6 +1,6 @@
-from model.mdm import MDM
-from diffusion import gaussian_diffusion as gd
-from diffusion.respace import SpacedDiffusion, space_timesteps
+from mdm.model.mdm import MDM
+from mdm.diffusion import gaussian_diffusion as gd
+from mdm.diffusion.respace import SpacedDiffusion, space_timesteps
 
 
 def load_model_wo_clip(model, state_dict):
@@ -24,6 +24,8 @@ def get_model_args(args, data):
         cond_mode = 'no_cond'
     elif args.dataset in ['kit', 'humanml']:
         cond_mode = 'text'
+    elif args.dataset in ['h36m']:
+        cond_mode = 'video'
     else:
         cond_mode = 'action'
     if hasattr(data.dataset, 'num_actions'):

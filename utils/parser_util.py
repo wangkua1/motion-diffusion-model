@@ -66,6 +66,11 @@ def add_base_options(parser):
     group.add_argument("--device", default=0, type=int, help="Device id to use.")
     group.add_argument("--seed", default=10, type=int, help="For fixing random seed.")
     group.add_argument("--batch_size", default=64, type=int, help="Batch size during training.")
+    group.add_argument("--no_motion_augmentation", action='store_true',  
+                       help="Turn off data augmentation for humanml model")
+    group.add_argument("--use_amass_cont6d", action='store_true',  
+                       help="Turn off data augmentation for humanml model")
+    
 
 
 def add_diffusion_options(parser):
@@ -98,6 +103,7 @@ def add_model_options(parser):
     group.add_argument("--unconstrained", action='store_true',
                        help="Model is trained unconditionally. That is, it is constrained by neither text nor action. "
                             "Currently tested on HumanAct12 only.")
+    
 
 
 
@@ -176,6 +182,8 @@ def add_generate_options(parser):
                        help="A text prompt to be generated. If empty, will take text prompts from dataset.")
     group.add_argument("--action_name", default='', type=str,
                        help="An action name to be generated. If empty, will take text prompts from dataset.")
+    group.add_argument("--condition_split", default='test', type=str,
+                       help="Which dataset split to take for conditinoing (test/action/video")
 
 
 def add_edit_options(parser):

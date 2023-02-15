@@ -52,6 +52,11 @@ def collate(batch):
         action_text = [b['action_text']for b in notnone_batches]
         cond['y'].update({'action_text': action_text})
 
+    # video features are for cond_mode=='video'
+    if 'features' in notnone_batches[0]:
+        features = [torch.tensor(b['features']) for b in notnone_batches]
+        cond['y'].update({'features': torch.stack(features)}) # (T,featdim)
+
     return motion, cond
 
 # an adapter to our collate func

@@ -438,6 +438,7 @@ def recover_from_rot(data, joints_num, skeleton):
 
 def recover_cont6d_from_humamml(data, joints_num=22):
     # input shape (N,T,263)
+    # return the 22-joint 6d params and the root translation
     r_rot_quat, r_pos = recover_root_rot_pos(data) 
 
     r_rot_cont6d = quaternion_to_cont6d(r_rot_quat)
@@ -449,7 +450,7 @@ def recover_cont6d_from_humamml(data, joints_num=22):
     cont6d_params = torch.cat([r_rot_cont6d, cont6d_params], dim=-1)
     cont6d_params = cont6d_params.view(-1, joints_num, 6)
 
-    return cont6d_params
+    return cont6d_params, r_pos 
 
 def recover_rot(data):
     # dataset [bs, seqlen, 263/251] HumanML/KIT
