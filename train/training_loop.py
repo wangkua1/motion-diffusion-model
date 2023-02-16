@@ -45,6 +45,7 @@ class TrainLoop:
         self.fp16_scale_growth = 1e-3  # deprecating this option
         self.weight_decay = args.weight_decay
         self.lr_anneal_steps = args.lr_anneal_steps
+        self.foot_vel_threshold = args.foot_vel_threshold 
 
         self.step = 0
         self.resume_step = 0
@@ -226,7 +227,8 @@ class TrainLoop:
                 micro,  # [bs, ch, image_size, image_size]
                 t,  # [bs](int) sampled timesteps
                 model_kwargs=micro_cond,
-                dataset=self.data.dataset
+                dataset=self.data.dataset,
+                foot_vel_threshold=self.foot_vel_threshold,
             )
 
             if last_batch or not self.use_ddp:

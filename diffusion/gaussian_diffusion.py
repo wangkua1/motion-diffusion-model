@@ -1257,7 +1257,7 @@ class GaussianDiffusion:
         output = th.where((t == 0), decoder_nll, kl)
         return {"output": output, "pred_xstart": out["pred_xstart"]}
 
-    def training_losses(self, model, x_start, t, model_kwargs=None, noise=None, dataset=None):
+    def training_losses(self, model, x_start, t, model_kwargs=None, noise=None, dataset=None, foot_vel_threshold=0.01):
         """
         Compute training losses for a single timestep.
 
@@ -1280,7 +1280,7 @@ class GaussianDiffusion:
                                              glob=enc.glob,
                                              # jointstype='vertices',  # 3.4 iter/sec # USED ALSO IN MotionCLIP
                                              jointstype='smpl',  # 3.4 iter/sec
-                                             vertstrans=False)
+                                             vertstrans=False,)
 
         if model_kwargs is None:
             model_kwargs = {}
@@ -1345,7 +1345,7 @@ class GaussianDiffusion:
                 terms["rcxyz_mse"] = self.masked_l2(target_xyz, model_output_xyz, mask)  # mean_flat((target_xyz - model_output_xyz) ** 2)
 
             if self.lambda_vel_rcxyz > 0.:
-                if self.data_rep == 'rot6d' and dataset.dataname in ['humanact12', 'uestc', 'amass']:
+                if self.data_rep == 'rot6d' and dataset.dataname in ['humanact12', 'uestc', 'amass','h36m']:
                     target_xyz = get_xyz(target) if target_xyz is None else target_xyz
                     model_output_xyz = get_xyz(model_output) if model_output_xyz is None else model_output_xyz
                     target_xyz_vel = (target_xyz[:, :, :, 1:] - target_xyz[:, :, :, :-1])
@@ -1354,7 +1354,7 @@ class GaussianDiffusion:
 
             if self.lambda_fc > 0.:
                 torch.autograd.set_detect_anomaly(True)
-                if self.data_rep == 'rot6d' and dataset.dataname in ['humanact12', 'uestc', 'amass']:
+                if self.data_rep == 'rot6d' and dataset.dataname in ['humanact12', 'uestc', 'amass','h36m']:
                     target_xyz = get_xyz(target) if target_xyz is None else target_xyz
                     model_output_xyz = get_xyz(model_output) if model_output_xyz is None else model_output_xyz
                     # 'L_Ankle',  # 7, 'R_Ankle',  # 8 , 'L_Foot',  # 10, 'R_Foot',  # 11
@@ -1362,7 +1362,7 @@ class GaussianDiffusion:
                     relevant_joints = [l_ankle_idx, l_foot_idx, r_ankle_idx, r_foot_idx]
                     gt_joint_xyz = target_xyz[:, relevant_joints, :, :]  # [BatchSize, 4, 3, Frames]
                     gt_joint_vel = torch.linalg.norm(gt_joint_xyz[:, :, :, 1:] - gt_joint_xyz[:, :, :, :-1], axis=2)  # [BatchSize, 4, Frames]
-                    fc_mask = torch.unsqueeze((gt_joint_vel <= 0.01), dim=2).repeat(1, 1, 3, 1)
+                    fc_mask = torch.unsqueeze((gt_joint_vel <= foot_vel_threshold), dim=2).repeat(1, 1, 3, 1)
                     pred_joint_xyz = model_output_xyz[:, relevant_joints, :, :]  # [BatchSize, 4, 3, Frames]
                     pred_vel = pred_joint_xyz[:, :, :, 1:] - pred_joint_xyz[:, :, :, :-1]
                     pred_vel[~fc_mask] = 0

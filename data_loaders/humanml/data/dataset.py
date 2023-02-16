@@ -205,7 +205,6 @@ class Text2MotionDataset(data.Dataset):
 '''For use of training text motion matching model, and evaluations'''
 class Text2MotionDatasetV2(data.Dataset):
     def __init__(self, opt, mean, std, split_file, w_vectorizer, no_motion_augmentation=False):
-        import ipdb; ipdb.set_trace()
         self.opt = opt
         self.w_vectorizer = w_vectorizer
         self.max_length = 20

@@ -34,8 +34,8 @@ def main():
 
     dist_util.setup_dist(args.device)
 
-    print("creating data loader...")
-    data = get_dataset_loader(name=args.dataset, batch_size=args.batch_size, 
+    print(f"creating data loader, num_workers {args.num_workers}")
+    data = get_dataset_loader(name=args.dataset, batch_size=args.batch_size, num_workers=args.num_workers,
         num_frames=args.num_frames, no_motion_augmentation=args.no_motion_augmentation)
     print("Dataset size ", len(data.dataset))
 
