@@ -13,6 +13,8 @@ from mdm.train.training_loop import TrainLoop
 from mdm.data_loaders.get_data import get_dataset_loader
 from mdm.utils.model_util import create_model_and_diffusion
 from mdm.train.train_platforms import ClearmlPlatform, TensorboardPlatform, NoPlatform  # required for the eval operation
+from nemo.utils.exp_utils import create_latest_child_dir
+
 
 def main():
     args = train_args()
@@ -20,10 +22,8 @@ def main():
 
     if args.save_dir is None:
         raise FileNotFoundError('save_dir was not specified.')
-    elif os.path.exists(args.save_dir) and not args.overwrite:
-        raise FileExistsError('save_dir [{}] already exists.'.format(args.save_dir))
-    elif not os.path.exists(args.save_dir):
-        os.makedirs(args.save_dir)
+
+    args.save_dir = create_latest_child_dir(args.save_dir)
     args_path = os.path.join(args.save_dir, 'args.json')
     with open(args_path, 'w') as fw:
         json.dump(vars(args), fw, indent=4, sort_keys=True)
