@@ -40,6 +40,7 @@ class TrainLoop:
         self.fp16_scale_growth = 1e-3  # deprecating this option
         self.weight_decay = args.weight_decay
         self.lr_anneal_steps = args.lr_anneal_steps
+        self.foot_vel_threshold = args.foot_vel_threshold 
 
         self.step = 0
         self.resume_step = 0

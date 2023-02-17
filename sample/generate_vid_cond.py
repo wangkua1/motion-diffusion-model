@@ -1,7 +1,18 @@
-# This code is based on https://github.com/openai/guided-diffusion
 """
-Generate a large batch of image samples from a model and save them as a large
-numpy array. This can be used to produce samples for FID evaluation.
+Based on mdm/sample/generate.py
+
+Generate samples conditioned on video features. This means running GHMR inference. 
+
+python -m mdm.sample.generate --model_path /path/to/model
+
+Required args: 
+    --model_path diffusion model to sample from. 
+Optional args:     
+    --condition_dataset one of 'h36m','3dpw'. If empty, defaults to the dataset the model was trained on. Note that args.dataset will be the same as model dataset ... this param is used for some other config (see the code)
+    --condition_split. One of 'train','test'. Defaults to 'test'.  
+    --output_dir. Where to put result images. if not specified, put in same folder as --model_path
+    --num_samples default 10
+    --num_repetitions default 3
 """
 from mdm.utils.fixseed import fixseed
 import os
@@ -33,36 +44,23 @@ def main():
     n_frames = min(max_frames, int(args.motion_length*fps))
     is_using_data = not any([args.input_text, args.text_prompt, args.action_file, args.action_name])
     dist_util.setup_dist(args.device)
-    if out_path == '':
-        out_path = os.path.join(os.path.dirname(args.model_path),
+
+    if args.output_dir=="":
+        args.output_dir = os.path.dirname(args.model_path)
+
+    DO_AUTO_PATH_CREATE=True
+    if DO_AUTO_PATH_CREATE:
+        out_path = os.path.join(args.output_dir,
                                 'samples_split_{}_{}_{}_seed{}'.format(args.condition_split, name, niter, args.seed))
+
         if args.text_prompt != '':
             out_path += '_' + args.text_prompt.replace(' ', '_').replace('.', '')
         elif args.input_text != '':
             out_path += '_' + os.path.basename(args.input_text).replace('.txt', '').replace(' ', '_').replace('.', '')
         os.makedirs(out_path, exist_ok=True)
 
-    # if args.cond_mode in ["text","action"]:
-    #     args.guidance_param=1 # force unconditional 
-    # this block must be called BEFORE the dataset is loaded
-    if args.text_prompt != '':
-        texts = [args.text_prompt]
-        args.num_samples = 1
-    elif args.input_text != '':
-        assert os.path.exists(args.input_text)
-        with open(args.input_text, 'r') as fr:
-            texts = fr.readlines()
-        texts = [s.replace('\n', '') for s in texts]
-        args.num_samples = len(texts)
-    elif args.action_name:
-        action_text = [args.action_name]
-        args.num_samples = 1
-    elif args.action_file != '':
-        assert os.path.exists(args.action_file)
-        with open(args.action_file, 'r') as fr:
-            action_text = fr.readlines()
-        action_text = [s.replace('\n', '') for s in action_text]
-        args.num_samples = len(action_text)
+
+    print(f"Out path: [{out_path}]")
 
     assert args.num_samples <= args.batch_size, \
         f'Please either increase batch_size({args.batch_size}) or reduce num_samples({args.num_samples})'
@@ -72,7 +70,7 @@ def main():
     # (specify through the --seed flag)
     args.batch_size = args.num_samples  # Sampling a single batch from the testset, with exactly args.num_samples
 
-    print('Loading dataset...')
+    print(f'Loading dataset for conditioning features {args.condition_dataset}...')
     data = load_dataset(args, max_frames, n_frames, split=args.condition_split)
 
     total_num_samples = args.num_samples * args.num_repetitions
@@ -119,7 +117,7 @@ def main():
     # 
     samples_vid_gt_processed = postprocess(samples_vid_gt.to(dist_util.dev()), model, data,)
     all_motions.append(samples_vid_gt_processed.cpu().numpy())
-    all_text += ['GT vid cond motion']*len(samples_vid_gt_processed)
+    all_text += [f'GT cond motion {args.condition_dataset }']*len(samples_vid_gt_processed)
     all_lengths.append(model_kwargs['y']['lengths'].cpu().numpy())
 
     for rep_i in range(args.num_repetitions):
@@ -133,12 +131,16 @@ def main():
         sample_fn = diffusion.p_sample_loop
 
         with torch.no_grad():
+            NOISE_THE_INPUTS=False
+            if NOISE_THE_INPUTS:
+                print("Setting features to zero")
+                model_kwargs['y']['features'] = torch.zeros(*model_kwargs['y']['features'].shape)
             sample = sample_fn(
                 model,
                 (args.batch_size, model.njoints, model.nfeats, n_frames),
                 clip_denoised=False,
                 model_kwargs=model_kwargs,
-                skip_timesteps=0,  # 0 is the default value - i.e. don't skip any step
+                skip_timesteps=0,  
                 init_image=None,
                 progress=True,
                 dump_steps=None,
@@ -150,7 +152,7 @@ def main():
         if args.unconstrained:
             all_text += ['unconstrained'] * args.num_samples
         else:
-            all_text += f'conditioned sample {rep_i}'* args.num_samples
+            all_text += [f'conditioned sample {rep_i}']* args.num_samples
 
         all_motions.append(sample.cpu().numpy())
         all_lengths.append(model_kwargs['y']['lengths'].cpu().numpy())
@@ -166,7 +168,7 @@ def main():
     print(f'[Done] Results are at [{os.path.abspath(out_path)}]')
 
 def load_dataset(args, max_frames, n_frames, split):
-    data = get_dataset_loader(name=args.dataset,
+    data = get_dataset_loader(name=args.condition_dataset,
                               batch_size=args.batch_size,
                               num_frames=max_frames,
                               split=split,

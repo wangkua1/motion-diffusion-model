@@ -40,6 +40,7 @@ def parse_and_load_from_model(parser, model_path=None):
 
     if args.cond_mask_prob == 0:
         args.guidance_param = 1
+
     return args
 
 
@@ -69,9 +70,7 @@ def add_base_options(parser):
     group.add_argument("--no_motion_augmentation", action='store_true',  
                        help="Turn off data augmentation for humanml model")
     group.add_argument("--use_amass_cont6d", action='store_true',  
-                       help="Turn off data augmentation for humanml model")
-    
-
+                       help="")
 
 def add_diffusion_options(parser):
     group = parser.add_argument_group('diffusion')
@@ -149,6 +148,11 @@ def add_training_options(parser):
                        help="Limit for the maximal number of frames. In HumanML3D and KIT this field is ignored.")
     group.add_argument("--resume_checkpoint", default="", type=str,
                        help="If not empty, will start from the specified checkpoint (path to model###.pt file).")
+    group.add_argument("--num_workers", default=0, type=int,
+                       help="Num_workers param from torch.utils.data.DataLoader")
+    group.add_argument("--foot_vel_threshold", default=0.01, type=float, 
+                        help="Velocity of foot joints that indicate the foot should not slide.")
+    
 
 
 def add_sampling_options(parser):
@@ -184,6 +188,8 @@ def add_generate_options(parser):
                        help="An action name to be generated. If empty, will take text prompts from dataset.")
     group.add_argument("--condition_split", default='test', type=str,
                        help="Which dataset split to take for conditinoing (test/action/video")
+    group.add_argument("--condition_dataset", default='', type=str,
+                       help="Dataset for inference (using the conditioning)")
 
 
 def add_edit_options(parser):
@@ -232,7 +238,12 @@ def generate_args():
     add_base_options(parser)
     add_sampling_options(parser)
     add_generate_options(parser)
-    return parse_and_load_from_model(parser)
+    args = parse_and_load_from_model(parser)
+    args.condition_dataset = args.dataset \
+        if args.condition_dataset=="" \
+        else args.condition_dataset
+    
+    return args
 
 def generate_parser():
     parser = ArgumentParser()
