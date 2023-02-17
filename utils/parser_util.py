@@ -108,10 +108,12 @@ def add_model_options(parser):
 
 def add_data_options(parser):
     group = parser.add_argument_group('dataset')
-    group.add_argument("--dataset", default='humanml', 
+    group.add_argument("--dataset", default='amass', 
           # choices=['humanml', 'kit', 'humanact12', 'uestc','amass'], 
-          type=str,
-                       help="Dataset name (choose from list).")
+          type=str, help="Dataset name (choose from list).")
+    group.add_argument("--data_rep", default='rot6d', 
+          choices=['rot6d', 'rot6d_fc'], 
+          type=str, help="Dataset name (choose from list).")
     group.add_argument("--data_dir", default="", type=str,
                        help="If empty, will use defaults according to the specified dataset.")
 
