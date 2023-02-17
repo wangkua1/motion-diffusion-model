@@ -25,7 +25,7 @@ def list_cut_average(ll, intervals):
 
 
 def plot_3d_motion(save_path, kinematic_tree, joints, title, dataset, figsize=(3, 3), fps=120, radius=3,
-                   vis_mode='default', gt_frames=[]):
+                   vis_mode='default', gt_frames=[], view_params={'elev':120, 'azim':-90}):
     matplotlib.use('Agg')
 
     title = '\n'.join(wrap(title, 20))
@@ -89,8 +89,8 @@ def plot_3d_motion(save_path, kinematic_tree, joints, title, dataset, figsize=(3
     data[:, :, 1] -= height_offset
     trajec = data[:, 0, [0, 2]]
 
-    data[..., 0] -= data[:, 0:1, 0]
-    data[..., 2] -= data[:, 0:1, 2]
+    data[..., 0] -= data[:, 0:1, 0]  # centering frame 0 in x
+    data[..., 2] -= data[:, 0:1, 2]  # centering frame 0 in z
 
     #     print(trajec.shape)
 
@@ -98,7 +98,7 @@ def plot_3d_motion(save_path, kinematic_tree, joints, title, dataset, figsize=(3
         #         print(index)
         ax.lines = []
         ax.collections = []
-        ax.view_init(elev=120, azim=-90)
+        ax.view_init(elev=view_params['elev'], azim=view_params['azim'])
         ax.dist = 7.5
         #         ax =
         plot_xzPlane(MINS[0] - trajec[index, 0], MAXS[0] - trajec[index, 0], 0, MINS[2] - trajec[index, 1],
