@@ -46,10 +46,11 @@ def get_model_args(args, data):
         data_rep = 'hml_vec'
         njoints = 251
         nfeats = 1
-    # elif hasattr(data.dataset, njoints):
-    #     data_rep = 'rot6d_p'
-    #     njoints=data.dataset.njoints
-    #     nfeats=data.dataset.nfeats
+    # following is for datasets from the `vibe_datasets` class
+    elif data is not None and hasattr(data.dataset, 'njoints'):
+        data_rep = data.dataset.data_rep
+        njoints=data.dataset.njoints # should be 154
+        nfeats=data.dataset.nfeats   # should be 1
 
     return {'modeltype': '', 'njoints': njoints, 'nfeats': nfeats, 'num_actions': num_actions,
             'translation': True, 'pose_rep': 'rot6d', 'glob': True, 'glob_rot': True,

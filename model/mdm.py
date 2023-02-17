@@ -162,11 +162,9 @@ class MDM(nn.Module):
         x: [batch_size, njoints, nfeats, max_frames], denoted x_t in the paper
         timesteps: [batch_size] (int)
         """
-        # import ipdb;ipdb.set_trace()
         bs, njoints, nfeats, nframes = x.shape
         emb = self.embed_timestep(timesteps)  # [1, bs, d]
         
-        # ipdb.set_trace()
         force_mask = y.get('uncond', False)
         if 'text' in self.cond_mode:
             enc_text = self.encode_text(y['text'])
@@ -185,12 +183,11 @@ class MDM(nn.Module):
         x = self.input_process(x)
         if self.arch == 'trans_enc':
             if 'video' in self.cond_mode:
-                # import ipdb; ipdb.set_trace()
                 features = y['features'].cuda()
                 shape = features.shape
                 video_emb = self.embed_video(features.view(-1, features.shape[-1]))
                 video_emb = video_emb.view(*shape[:2], video_emb.shape[-1]).permute(1,0,2)
-                video_emb = self.mask_cond(video_emb, force_mask=force_mask) 
+                # video_emb = self.mask_cond(video_emb, force_mask=force_mask) 
                 x = torch.cat((x, video_emb), axis=-1)
             
             # adding the timestep embed
@@ -279,7 +276,7 @@ class InputProcess(nn.Module):
         bs, njoints, nfeats, nframes = x.shape
         x = x.permute((3, 0, 1, 2)).reshape(nframes, bs, njoints*nfeats)
 
-        if self.data_rep in ['rot6d', 'xyz', 'hml_vec']:
+        if self.data_rep in ['rot6d', 'xyz', 'hml_vec','rot6d_fc']:
             x = self.poseEmbedding(x)  # [seqlen, bs, d]
             return x
         elif self.data_rep == 'rot_vel':
@@ -306,7 +303,7 @@ class OutputProcess(nn.Module):
 
     def forward(self, output):
         nframes, bs, d = output.shape
-        if self.data_rep in ['rot6d', 'xyz', 'hml_vec', 'rot6d_p']:
+        if self.data_rep in ['rot6d', 'xyz', 'hml_vec', 'rot6d_fc']:
             output = self.poseFinal(output)  # [seqlen, bs, 150]
         elif self.data_rep == 'rot_vel':
             first_pose = output[[0]]  # [1, bs, d]

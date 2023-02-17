@@ -1274,7 +1274,6 @@ class GaussianDiffusion:
         # enc = model.model._modules['module']
         enc = model.model
         mask = model_kwargs['y']['mask']
-
         get_xyz = lambda sample: enc.rot2xyz(sample, mask=None, pose_rep=enc.pose_rep, 
                                             translation=enc.translation,
                                              glob=enc.glob,
