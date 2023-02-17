@@ -16,7 +16,6 @@ def create_model_and_diffusion(args, data):
 
 
 def get_model_args(args, data):
-
     # default args
     clip_version = 'ViT-B/32'
     action_emb = 'tensor'
@@ -28,11 +27,12 @@ def get_model_args(args, data):
         cond_mode = 'video'
     else:
         cond_mode = 'action'
-    if hasattr(data.dataset, 'num_actions'):
-        num_actions = data.dataset.num_actions
-    else:
-        num_actions = 1
-
+        
+    num_actions = 1
+    if data is not None:
+        if hasattr(data.dataset, 'num_actions'):
+            num_actions = data.dataset.num_actions
+        
     # SMPL defaults
     data_rep = 'rot6d'
     njoints = 25
@@ -46,10 +46,10 @@ def get_model_args(args, data):
         data_rep = 'hml_vec'
         njoints = 251
         nfeats = 1
-    elif hasattr(data.dataset, njoints):
-        data_rep = 'rot6d_p'
-        njoints=data.dataset.njoints
-        nfeats=data.dataset.nfeats
+    # elif hasattr(data.dataset, njoints):
+    #     data_rep = 'rot6d_p'
+    #     njoints=data.dataset.njoints
+    #     nfeats=data.dataset.nfeats
 
     return {'modeltype': '', 'njoints': njoints, 'nfeats': nfeats, 'num_actions': num_actions,
             'translation': True, 'pose_rep': 'rot6d', 'glob': True, 'glob_rot': True,

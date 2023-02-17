@@ -114,6 +114,7 @@ def add_data_options(parser):
                        help="Dataset name (choose from list).")
     group.add_argument("--data_dir", default="", type=str,
                        help="If empty, will use defaults according to the specified dataset.")
+    group.add_argument("--split", default='train', type=str)
 
 
 def add_training_options(parser):
@@ -221,6 +222,22 @@ def add_evaluation_options(parser):
     group.add_argument("--guidance_param", default=2.5, type=float,
                        help="For classifier-free sampling - specifies the s parameter, as defined in the paper.")
 
+
+def add_emp_options(parser):
+    group = parser.add_argument_group('emp')
+    group.add_argument("--data_config_path", required=True, type=str)
+
+
+
+def train_emp_args():
+    parser = ArgumentParser()
+    add_base_options(parser)
+    add_data_options(parser)
+    add_model_options(parser)
+    add_diffusion_options(parser)
+    add_training_options(parser)
+    add_emp_options(parser)
+    return parser.parse_args()
 
 def train_args():
     parser = ArgumentParser()
