@@ -18,8 +18,6 @@ def get_dataset_class(name):
     elif name == "kit":
         from data_loaders.humanml.data.dataset import KIT
         return KIT
-
-
     else:
         raise ValueError(f'Unsupported dataset name [{name}]')
 
