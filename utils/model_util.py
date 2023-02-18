@@ -16,7 +16,6 @@ def create_model_and_diffusion(args, data):
 
 
 def get_model_args(args, data):
-
     # default args
     clip_version = 'ViT-B/32'
     action_emb = 'tensor'
@@ -28,11 +27,12 @@ def get_model_args(args, data):
         cond_mode = 'video'
     else:
         cond_mode = 'action'
-    if hasattr(data.dataset, 'num_actions'):
-        num_actions = data.dataset.num_actions
-    else:
-        num_actions = 1
-
+        
+    num_actions = 1
+    if data is not None:
+        if hasattr(data.dataset, 'num_actions'):
+            num_actions = data.dataset.num_actions
+        
     # SMPL defaults
     data_rep = 'rot6d'
     njoints = 25
@@ -47,7 +47,7 @@ def get_model_args(args, data):
         njoints = 251
         nfeats = 1
     # following is for datasets from the `vibe_datasets` class
-    elif hasattr(data.dataset, 'njoints'):
+    elif data is not None and hasattr(data.dataset, 'njoints'):
         data_rep = data.dataset.data_rep
         njoints=data.dataset.njoints # should be 154
         nfeats=data.dataset.nfeats   # should be 1

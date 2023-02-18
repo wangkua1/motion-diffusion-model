@@ -129,15 +129,17 @@ class MDM(nn.Module):
         return clip_model
 
     def mask_cond(self, cond, force_mask=False):
-        bs, d = cond.shape
-        if force_mask:
-            return torch.zeros_like(cond)
-        elif self.training and self.cond_mask_prob > 0.:
-            mask = torch.bernoulli(torch.ones(bs, device=cond.device) * self.cond_mask_prob).view(bs, 1)  # 1-> use null_cond, 0-> use real cond
-            return cond * (1. - mask)
-        else:
-            return cond
-
+        # bs, d = cond.shape
+        # if force_mask:
+        #     return torch.zeros_like(cond)
+        # elif self.training and self.cond_mask_prob > 0.:
+        #     mask = torch.bernoulli(torch.ones(bs, device=cond.device) * self.cond_mask_prob).view(bs, 1)  # 1-> use null_cond, 0-> use real cond
+        #     return cond * (1. - mask)
+        # else:
+        #     return cond
+        ### JW TMP...
+        return cond
+        
     def encode_text(self, raw_text):
         # raw_text - list (batch_size length) of strings with input text prompts
         device = next(self.parameters()).device

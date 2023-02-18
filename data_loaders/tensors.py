@@ -1,3 +1,4 @@
+import ipdb
 import torch
 
 def lengths_to_mask(lengths, max_len):
@@ -26,7 +27,6 @@ def collate(batch):
         lenbatch = [b['lengths'] for b in notnone_batches]
     else:
         lenbatch = [len(b['inp'][0][0]) for b in notnone_batches]
-
 
     databatchTensor = collate_tensors(databatch)
     lenbatchTensor = torch.as_tensor(lenbatch)

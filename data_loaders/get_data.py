@@ -1,6 +1,6 @@
 from torch.utils.data import DataLoader
-from data_loaders.tensors import collate as all_collate
-from data_loaders.tensors import t2m_collate
+from mdm.data_loaders.tensors import collate as all_collate
+from mdm.data_loaders.tensors import t2m_collate
 
 def get_dataset_class(name):
     if "amass" in name or name in ['h36m','3dpw']:
