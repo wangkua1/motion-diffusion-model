@@ -69,8 +69,7 @@ def main():
     args.batch_size = args.num_samples  # Sampling a single batch from the testset, with exactly args.num_samples
 
     print('Loading dataset...')
-    data = load_dataset(args, max_frames, n_frames)
-
+    data = load_dataset(args, max_frames, n_frames) 
     total_num_samples = args.num_samples * args.num_repetitions
 
     print("Creating model and diffusion...")
@@ -146,8 +145,9 @@ def main():
 
         rot2xyz_pose_rep = 'xyz' if model.data_rep in ['xyz', 'hml_vec'] else model.data_rep
         rot2xyz_mask = None if rot2xyz_pose_rep == 'xyz' else model_kwargs['y']['mask'].reshape(args.batch_size, n_frames).bool()
+
         sample = model.rot2xyz(x=sample, mask=rot2xyz_mask, pose_rep=rot2xyz_pose_rep, glob=True, translation=True,
-                               jointstype='smpl', vertstrans=True, betas=None, beta=0, glob_rot=None,
+                               jointstype='smpl', vertstrans=True, betas=None, beta=0, glob_rot=None, data_rep=model.data_rep,
                                get_rotations_back=False)
 
         if args.unconstrained:
@@ -260,6 +260,8 @@ def load_dataset(args, max_frames, n_frames):
     data = get_dataset_loader(name=args.dataset,
                               batch_size=args.batch_size,
                               num_frames=max_frames,
+                              data_rep=args.data_rep,
+                              no_motion=True,   # don't bother doing all the preprocessing stuff
                               split='test',
                               hml_mode='text_only')
     data.fixed_length = n_frames

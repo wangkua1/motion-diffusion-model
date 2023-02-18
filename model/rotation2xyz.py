@@ -16,9 +16,23 @@ class Rotation2xyz:
 
     def __call__(self, x, mask, pose_rep, translation, glob,
                  jointstype, vertstrans, betas=None, beta=0,
-                 glob_rot=None, get_rotations_back=False, **kwargs):
+                 glob_rot=None, get_rotations_back=False, 
+                 get_fc_back=False, **kwargs):
+        """
+        Args:
+        x: 
+        """
+        N,J,D,T = x.shape
         if pose_rep == "xyz":
             return x
+        if pose_rep=="rot6d_fc":
+            # this data rep starts with rot6d, flattends it in J dimension (dim 1), and adds 4 indicators 
+            # variables for foot and ankle "contact" (defined as having absolute velocity below a threshold)
+            assert (J,D)==(154,1), "data_rep [rot_6d] should be shape (N,154,1,T)"
+            x = x.permute(0,3,1,2)
+            fc = (x[...,-4:,[0]]).permute(0,2,3,1)                  # (N,4,1,T), foot contacts
+            (x[...,-4:,[0]]).permute(0,2,3,1)                       # (N,4,1,T)
+            x=(x[...,:-4,[0]]).reshape(N,T,25,6).permute(0,2,3,1)   # (N,25,6,T) 
 
         if mask is None:
             mask = torch.ones((x.shape[0], x.shape[-1]), dtype=bool, device=x.device)
@@ -29,7 +43,6 @@ class Rotation2xyz:
         if jointstype not in JOINTSTYPES:
             raise NotImplementedError("This jointstype is not implemented.")
 
-        # ipdb.set_trace()
         if translation:
             x_translations = x[:, -1, :3]
             x_rotations = x[:, :-1]
@@ -46,7 +59,7 @@ class Rotation2xyz:
             rotations = x_rotations[mask].view(-1, njoints, 3, 3)
         elif pose_rep == "rotquat":
             rotations = geometry.quaternion_to_matrix(x_rotations[mask])
-        elif pose_rep == "rot6d":
+        elif pose_rep in ("rot6d","rot6d_fc"):
             rotations = geometry.rotation_6d_to_matrix(x_rotations[mask])
             # pred_rotmat = rot6d_to_rotmat(x_rotations[mask]).view(-1, 24, 3, 3)
             # ipdb.set_trace() ## clearly different...
@@ -65,7 +78,7 @@ class Rotation2xyz:
             betas = torch.zeros([rotations.shape[0], self.smpl_model.num_betas],
                                 dtype=rotations.dtype, device=rotations.device)
             betas[:, 1] = beta
-            # import ipdb; ipdb.set_trace()
+
         out = self.smpl_model(body_pose=rotations, global_orient=global_orient, betas=betas)
 
         # get the desirable joints
@@ -91,5 +104,7 @@ class Rotation2xyz:
 
         if get_rotations_back:
             return x_xyz, rotations, global_orient
+        if get_fc_back:
+            return x_xyz, fc 
         else:
             return x_xyz

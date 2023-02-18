@@ -1276,7 +1276,7 @@ class GaussianDiffusion:
         mask = model_kwargs['y']['mask']
         get_xyz = lambda sample: enc.rot2xyz(sample, mask=None, pose_rep=enc.pose_rep, 
                                             translation=enc.translation,
-                                             glob=enc.glob,
+                                             glob=enc.glob, 
                                              # jointstype='vertices',  # 3.4 iter/sec # USED ALSO IN MotionCLIP
                                              jointstype='smpl',  # 3.4 iter/sec
                                              vertstrans=False,)
@@ -1344,7 +1344,7 @@ class GaussianDiffusion:
                 terms["rcxyz_mse"] = self.masked_l2(target_xyz, model_output_xyz, mask)  # mean_flat((target_xyz - model_output_xyz) ** 2)
 
             if self.lambda_vel_rcxyz > 0.:
-                if self.data_rep == 'rot6d' and dataset.dataname in ['humanact12', 'uestc', 'amass','h36m']:
+                if self.data_rep in ('rot6d','rot6d_fc') and dataset.dataname in ['humanact12', 'uestc', 'amass','h36m','3dpw']:
                     target_xyz = get_xyz(target) if target_xyz is None else target_xyz
                     model_output_xyz = get_xyz(model_output) if model_output_xyz is None else model_output_xyz
                     target_xyz_vel = (target_xyz[:, :, :, 1:] - target_xyz[:, :, :, :-1])
@@ -1353,8 +1353,8 @@ class GaussianDiffusion:
 
             if self.lambda_fc > 0.:
                 torch.autograd.set_detect_anomaly(True)
-                if self.data_rep == 'rot6d' and dataset.dataname in ['humanact12', 'uestc', 'amass','h36m']:
-                    target_xyz = get_xyz(target) if target_xyz is None else target_xyz
+                if self.data_rep in ('rot6d','rot6d_fc') and dataset.dataname in ['humanact12', 'uestc', 'amass','h36m','3dpw']:
+                    target_xyz = get_xyz(target, ) if target_xyz is None else target_xyz
                     model_output_xyz = get_xyz(model_output) if model_output_xyz is None else model_output_xyz
                     # 'L_Ankle',  # 7, 'R_Ankle',  # 8 , 'L_Foot',  # 10, 'R_Foot',  # 11
                     l_ankle_idx, r_ankle_idx, l_foot_idx, r_foot_idx = 7, 8, 10, 11
