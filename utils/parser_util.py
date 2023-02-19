@@ -117,7 +117,8 @@ def add_data_options(parser):
     group.add_argument("--data_dir", default="", type=str,
                        help="If empty, will use defaults according to the specified dataset.")
     group.add_argument("--split", default='train', type=str)
-
+    group.add_argument("--rotation_augmentation", action='store_true',
+                       help="Randomly rotate the motinos about the y axis")
 
 def add_training_options(parser):
     group = parser.add_argument_group('training')
@@ -193,6 +194,8 @@ def add_generate_options(parser):
                        help="Which dataset split to take for conditinoing (test/action/video")
     group.add_argument("--condition_dataset", default='', type=str,
                        help="Dataset for inference (using the conditioning)")
+    group.add_argument("--num_sampling_frames", default=-1, type=int,
+                       help="Number of frames in sample generation. Default -1 means the model will switch to dataset-level defaults")
 
 
 def add_edit_options(parser):

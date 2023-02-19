@@ -27,7 +27,11 @@ def main():
     niter = os.path.basename(args.model_path).replace('model', '').replace('.pt', '')
     max_frames = 196 if args.dataset in ['kit', 'humanml'] else 60
     fps = 12.5 if args.dataset == 'kit' else 20
-    n_frames = min(max_frames, int(args.motion_length*fps))
+    # n_frames = min(max_frames, int(args.motion_length*fps))
+    n_frames = int(args.motion_length*fps)
+    if n_frames > max_frames:
+        print(f"***WARNING*** args.motion_length [{args.motion_length}] seconds is greater "\
+                "recommended length which is 9.8 for HumanML3D and 2 for everything else")
     is_using_data = not any([args.input_text, args.text_prompt, args.action_file, args.action_name])
     dist_util.setup_dist(args.device)
     if out_path == '':
@@ -69,8 +73,7 @@ def main():
     args.batch_size = args.num_samples  # Sampling a single batch from the testset, with exactly args.num_samples
 
     print('Loading dataset...')
-    data = load_dataset(args, max_frames, n_frames)
-
+    data = load_dataset(args, max_frames, n_frames) 
     total_num_samples = args.num_samples * args.num_repetitions
 
     print("Creating model and diffusion...")
@@ -136,6 +139,7 @@ def main():
                 noise=None,
                 const_noise=False,
             )
+        ipdb.set_trace()
 
         # Recover XYZ *positions* from HumanML3D vector representation
         if model.data_rep == 'hml_vec':
@@ -146,8 +150,9 @@ def main():
 
         rot2xyz_pose_rep = 'xyz' if model.data_rep in ['xyz', 'hml_vec'] else model.data_rep
         rot2xyz_mask = None if rot2xyz_pose_rep == 'xyz' else model_kwargs['y']['mask'].reshape(args.batch_size, n_frames).bool()
+
         sample = model.rot2xyz(x=sample, mask=rot2xyz_mask, pose_rep=rot2xyz_pose_rep, glob=True, translation=True,
-                               jointstype='smpl', vertstrans=True, betas=None, beta=0, glob_rot=None,
+                               jointstype='smpl', vertstrans=True, betas=None, beta=0, glob_rot=None, data_rep=model.data_rep,
                                get_rotations_back=False)
 
         if args.unconstrained:
@@ -260,6 +265,8 @@ def load_dataset(args, max_frames, n_frames):
     data = get_dataset_loader(name=args.dataset,
                               batch_size=args.batch_size,
                               num_frames=max_frames,
+                              data_rep=args.data_rep,
+                              no_motion=True,   # don't bother doing all the preprocessing stuff
                               split='test',
                               hml_mode='text_only')
     data.fixed_length = n_frames

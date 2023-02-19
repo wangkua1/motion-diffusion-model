@@ -71,7 +71,7 @@ def main():
     args.batch_size = args.num_samples  # Sampling a single batch from the testset, with exactly args.num_samples
 
     print(f'Loading dataset for conditioning features {args.condition_dataset}...')
-    data = load_dataset(args, max_frames, n_frames, split=args.condition_split)
+    data = load_dataset(args, max_frames, n_frames, split=args.condition_split )
 
     total_num_samples = args.num_samples * args.num_repetitions
 
