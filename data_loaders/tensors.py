@@ -57,6 +57,13 @@ def collate(batch):
         features = [torch.tensor(b['features']) for b in notnone_batches]
         cond['y'].update({'features': torch.stack(features)}) # (T,featdim)
 
+    # video name for vibe datasets
+    if 'vid_name' in notnone_batches[0]:
+        import numpy as np     # this data is strings. 
+        # import ipdb; ipdb.set_trace()
+        vid_names = [np.array(b['vid_name']) for b in notnone_batches]
+        cond['y'].update({'vid_name': np.stack(vid_names)}) # (T,featdim)
+
     return motion, cond
 
 # an adapter to our collate func

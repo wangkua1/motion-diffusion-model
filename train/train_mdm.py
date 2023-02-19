@@ -36,7 +36,7 @@ def main():
 
     print(f"creating data loader, num_workers {args.num_workers}")
     data = get_dataset_loader(name=args.dataset, batch_size=args.batch_size, num_workers=args.num_workers,
-        foot_vel_threshold=args.foot_vel_threshold, num_frames=args.num_frames, 
+        foot_vel_threshold=args.foot_vel_threshold, num_frames=args.num_frames, rotation_augmentation=args.rotation_augmentation,
         data_rep=args.data_rep, no_motion_augmentation=args.no_motion_augmentation) 
 
     print("Dataset size ", len(data.dataset))

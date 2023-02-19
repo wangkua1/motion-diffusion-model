@@ -31,30 +31,33 @@ def get_collate_fn(name, hml_mode='train'):
         return all_collate
 
 
-def get_dataset(name, num_frames, split='train', hml_mode='train', 
-                data_rep='rot6d', no_motion_augmentation=False, no_motion=False, foot_vel_threshold=0.01):
+def get_dataset(name, num_frames, split='train', hml_mode='train', data_rep='rot6d', 
+    rotation_augmentation=True, no_motion_augmentation=False, no_motion=False, foot_vel_threshold=0.01):
     DATA = get_dataset_class(name)
     if name in ["humanml", "kit"]:
         dataset = DATA(split=split, num_frames=num_frames, mode=hml_mode, no_motion_augmentation=no_motion_augmentation)
+    # import ipdb; ipdb.set_trace()
     elif 'amass' in name or name in ('h36m','3dpw'):
         # these use the same Dataset class
-        if ('amass' in name) and name!="amass":
+        if ('amass' in name) and name not in ("amass","amass_hml"):
             # Case where we take subsets of amass. Expect subdataset structure to be like "amass:KIT,CMU,HumanEva"
             restrict_subsets=name[6:].split(",")
             name='amass'
         else:
             restrict_subsets=None
-        dataset = DATA(split=split, num_frames=num_frames, dataset=name, data_rep=data_rep, 
+        dataset = DATA(split=split, num_frames=num_frames, dataset=name, data_rep=data_rep, rotation_augmentation=rotation_augmentation,
             restrict_subsets=restrict_subsets, no_motion=no_motion, foot_vel_threshold=foot_vel_threshold)
     else:
+        raise
         dataset = DATA(split=split, num_frames=num_frames)
     return dataset
 
 
 def get_dataset_loader(name, batch_size, num_frames, split='train', hml_mode='train', 
-    no_motion_augmentation=False, num_workers=0, data_rep='rot6d', no_motion=False, foot_vel_threshold=0.01):
+    no_motion_augmentation=False, num_workers=0, data_rep='rot6d', no_motion=False, 
+    foot_vel_threshold=0.01, rotation_augmentation=True):
     dataset = get_dataset(name, num_frames, split, hml_mode, data_rep=data_rep, no_motion_augmentation=no_motion_augmentation, 
-                        no_motion=no_motion, foot_vel_threshold=foot_vel_threshold)
+                        no_motion=no_motion, foot_vel_threshold=foot_vel_threshold, rotation_augmentation=rotation_augmentation)
     collate = get_collate_fn(name, hml_mode)
 
     loader = DataLoader(

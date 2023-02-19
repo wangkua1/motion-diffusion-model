@@ -27,7 +27,11 @@ def main():
     niter = os.path.basename(args.model_path).replace('model', '').replace('.pt', '')
     max_frames = 196 if args.dataset in ['kit', 'humanml'] else 60
     fps = 12.5 if args.dataset == 'kit' else 20
-    n_frames = min(max_frames, int(args.motion_length*fps))
+    # n_frames = min(max_frames, int(args.motion_length*fps))
+    n_frames = int(args.motion_length*fps)
+    if n_frames > max_frames:
+        print(f"***WARNING*** args.motion_length [{args.motion_length}] seconds is greater "\
+                "recommended length which is 9.8 for HumanML3D and 2 for everything else")
     is_using_data = not any([args.input_text, args.text_prompt, args.action_file, args.action_name])
     dist_util.setup_dist(args.device)
     if out_path == '':
@@ -135,6 +139,7 @@ def main():
                 noise=None,
                 const_noise=False,
             )
+        ipdb.set_trace()
 
         # Recover XYZ *positions* from HumanML3D vector representation
         if model.data_rep == 'hml_vec':
