@@ -1,4 +1,5 @@
 from mdm.model.mdm import MDM
+from gthmr.lib.models.emp import EMP
 from mdm.diffusion import gaussian_diffusion as gd
 from mdm.diffusion.respace import SpacedDiffusion, space_timesteps
 
@@ -8,6 +9,12 @@ def load_model_wo_clip(model, state_dict):
     assert len(unexpected_keys) == 0
     assert all([k.startswith('clip_model.') for k in missing_keys])
 
+
+def create_emp_model_and_diffusion(args, data):
+    model = EMP(**get_model_args(args, data))
+    diffusion = create_gaussian_diffusion(args)
+    model.diffusion = diffusion
+    return model, diffusion
 
 def create_model_and_diffusion(args, data):
     model = MDM(**get_model_args(args, data))

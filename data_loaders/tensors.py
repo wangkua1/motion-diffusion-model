@@ -57,6 +57,15 @@ def collate(batch):
         features = [torch.tensor(b['features']) for b in notnone_batches]
         cond['y'].update({'features': torch.stack(features)}) # (T,featdim)
 
+    if 'cv_pose_6d' in notnone_batches[0]:
+        cv_pose_6d_batch = [b['cv_pose_6d'] for b in notnone_batches]
+        cv_pose_6d_batch = collate_tensors(cv_pose_6d_batch)
+        cond['y'].update({'cv_pose_6d': cv_pose_6d_batch}) 
+
+    if 'joints3D' in notnone_batches[0]:
+        joints3D = [torch.tensor(b['joints3D']) for b in notnone_batches]
+        cond['y'].update({'joints3D': torch.stack(joints3D)}) # (T, 14, 3)
+
     return motion, cond
 
 # an adapter to our collate func
