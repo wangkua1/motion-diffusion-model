@@ -533,6 +533,12 @@ def rotation_6d_to_matrix(d6: torch.Tensor) -> torch.Tensor:
     b3 = torch.cross(b1, b2, dim=-1)
     return torch.stack((b1, b2, b3), dim=-2)
 
+def axis_angle_to_6d(aa):
+    return matrix_to_rotation_6d(axis_angle_to_matrix(aa))
+
+def rotation_6d_to_aa(d6):
+    rotmat = rotation_6d_to_matrix(d6)
+    return matrix_to_axis_angle(rotmat)
 
 def matrix_to_rotation_6d(matrix: torch.Tensor) -> torch.Tensor:
     """

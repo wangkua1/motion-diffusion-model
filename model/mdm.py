@@ -52,15 +52,15 @@ class MDM(nn.Module):
         self.gru_emb_dim = self.latent_dim if self.arch == 'gru' else 0
         self.input_process = InputProcess(self.data_rep, self.input_feats+self.gru_emb_dim, self.latent_dim)
 
-        d_model = self.latent_dim * 2  if self.cond_mode == 'video' else self.latent_dim
+        self.d_model = self.latent_dim * 2  if self.cond_mode == 'video' else self.latent_dim
 
-        self.sequence_pos_encoder = PositionalEncoding(d_model, self.dropout)
+        self.sequence_pos_encoder = PositionalEncoding(self.d_model, self.dropout)
         self.emb_trans_dec = emb_trans_dec
 
         
         if self.arch == 'trans_enc':
             print("TRANS_ENC init")
-            seqTransEncoderLayer = nn.TransformerEncoderLayer(d_model=d_model,
+            seqTransEncoderLayer = nn.TransformerEncoderLayer(d_model=self.d_model,
                                                               nhead=self.num_heads,
                                                               dim_feedforward=self.ff_size,
                                                               dropout=self.dropout,
@@ -88,7 +88,7 @@ class MDM(nn.Module):
         else:
             self.final_layer = lambda x: x
 
-        self.embed_timestep = TimestepEmbedder(d_model, self.sequence_pos_encoder)
+        self.embed_timestep = TimestepEmbedder(self.d_model, self.sequence_pos_encoder)
 
         if self.cond_mode != 'no_cond': 
             if 'text' in self.cond_mode:
