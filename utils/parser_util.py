@@ -238,6 +238,7 @@ def add_emp_options(parser):
     group.add_argument("--data_config_path", required=True, type=str)
     group.add_argument("--db", default=0, type=int)
     group.add_argument("--eval_hmr_every", default=5, type=int)
+    group.add_argument("--model_path", default='', type=str)
 
 
 
