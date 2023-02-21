@@ -32,7 +32,7 @@ def get_collate_fn(name, hml_mode='train'):
 
 
 def get_dataset(name, num_frames, split='train', hml_mode='train', data_rep='rot6d', 
-    rotation_augmentation=True, no_motion_augmentation=False, no_motion=False, foot_vel_threshold=0.01):
+    rotation_augmentation=False, no_motion_augmentation=False, no_motion=False, foot_vel_threshold=0.01):
     DATA = get_dataset_class(name)
     if name in ["humanml", "kit"]:
         dataset = DATA(split=split, num_frames=num_frames, mode=hml_mode, no_motion_augmentation=no_motion_augmentation)
@@ -55,7 +55,7 @@ def get_dataset(name, num_frames, split='train', hml_mode='train', data_rep='rot
 
 def get_dataset_loader(name, batch_size, num_frames, split='train', hml_mode='train', 
     no_motion_augmentation=False, num_workers=0, data_rep='rot6d', no_motion=False, 
-    foot_vel_threshold=0.01, rotation_augmentation=True):
+    foot_vel_threshold=0.01, rotation_augmentation=False):
     dataset = get_dataset(name, num_frames, split, hml_mode, data_rep=data_rep, no_motion_augmentation=no_motion_augmentation, 
                         no_motion=no_motion, foot_vel_threshold=foot_vel_threshold, rotation_augmentation=rotation_augmentation)
     collate = get_collate_fn(name, hml_mode)
