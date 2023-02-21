@@ -17,10 +17,10 @@ def parse_and_load_from_model(parser, model_path=None):
         args_to_overwrite += get_args_per_group_name(parser, args, group_name)
         
     # load args from model
-    if model_path is None:
+    if model_path is None and args.model_path is None:
         model_path = get_model_path_from_args()
     else:
-        args.model_path = model_path
+        model_path = args.model_path
 
     args_path = os.path.join(os.path.dirname(model_path), 'args.json')
     assert os.path.exists(args_path), 'Arguments json file was not found!'
@@ -37,7 +37,12 @@ def parse_and_load_from_model(parser, model_path=None):
 
         else:
             print('Warning: was not able to load [{}], using default value [{}] instead.'.format(a, args.__dict__[a]))
-
+    
+    if 'data_config_path' in model_args.keys():
+      args.data_config_path = model_args['data_config_path']
+      args.emp = True
+    else:
+      args.emp = False
     if args.cond_mask_prob == 0:
         args.guidance_param = 1
 
