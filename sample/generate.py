@@ -27,11 +27,11 @@ def main():
     niter = os.path.basename(args.model_path).replace('model', '').replace('.pt', '')
     max_frames = 196 if args.dataset in ['kit', 'humanml'] else 60
     fps = 12.5 if args.dataset == 'kit' else 20
-    # n_frames = min(max_frames, int(args.motion_length*fps))
-    n_frames = int(args.motion_length*fps)
-    if n_frames > max_frames:
-        print(f"***WARNING*** args.motion_length [{args.motion_length}] seconds is greater "\
-                "recommended length which is 9.8 for HumanML3D and 2 for everything else")
+    n_frames = min(max_frames, int(args.motion_length*fps))
+    # n_frames = int(args.motion_length*fps)
+    # if n_frames > max_frames:
+    #     print(f"***WARNING*** args.motion_length [{args.motion_length}] seconds is greater "\
+    #             "recommended length which is 9.8 for HumanML3D and 2 for everything else")
     is_using_data = not any([args.input_text, args.text_prompt, args.action_file, args.action_name])
     dist_util.setup_dist(args.device)
     if out_path == '':
@@ -77,7 +77,10 @@ def main():
     total_num_samples = args.num_samples * args.num_repetitions
 
     print("Creating model and diffusion...")
-    model, diffusion = create_model_and_diffusion(args, data)
+    if args.emp:
+        model, diffusion = create_emp_model_and_diffusion(args, None)
+    else:
+        model, diffusion = create_model_and_diffusion(args, data)
 
     print(f"Loading checkpoints from [{args.model_path}]...")
     state_dict = torch.load(args.model_path, map_location='cpu')
@@ -139,7 +142,6 @@ def main():
                 noise=None,
                 const_noise=False,
             )
-        ipdb.set_trace()
 
         # Recover XYZ *positions* from HumanML3D vector representation
         if model.data_rep == 'hml_vec':
@@ -266,7 +268,7 @@ def load_dataset(args, max_frames, n_frames):
                               batch_size=args.batch_size,
                               num_frames=max_frames,
                               data_rep=args.data_rep,
-                              no_motion=True,   # don't bother doing all the preprocessing stuff
+                              no_motion=False,   # don't bother doing all the preprocessing stuff
                               split='test',
                               hml_mode='text_only')
     data.fixed_length = n_frames

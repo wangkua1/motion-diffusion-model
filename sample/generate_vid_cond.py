@@ -26,15 +26,19 @@ from mdm.data_loaders.get_data import get_dataset_loader
 from mdm.data_loaders.humanml.scripts.motion_process import recover_from_ric
 import mdm.data_loaders.humanml.utils.paramUtil as paramUtil
 from mdm.data_loaders.humanml.utils.plot_script import plot_3d_motion
+from mdm.utils.model_util import create_emp_model_and_diffusion
 import shutil
 from mdm.data_loaders.tensors import collate
 from gthmr.lib.utils.mdm_utils import viz_motions
+from VIBE.lib.dataset.vibe_dataset import rotate_about_D
 import ipdb
 
 def main():
-    print("Generating samples")
+    print("Generating video-conditioned samples and ")
     args = generate_args()
-    print(f"Dataset split for conditioning variables, [{args.condition_split}]")
+    print(f"    Condition dataset [{args.condition_dataset}]")
+    print(f"                split [{args.condition_split}]")
+    
     fixseed(args.seed)
     out_path = args.output_dir
     name = os.path.basename(os.path.dirname(args.model_path))
@@ -52,7 +56,6 @@ def main():
     if DO_AUTO_PATH_CREATE:
         out_path = os.path.join(args.output_dir,
                                 'samples_split_{}_{}_{}_seed{}'.format(args.condition_split, name, niter, args.seed))
-
         if args.text_prompt != '':
             out_path += '_' + args.text_prompt.replace(' ', '_').replace('.', '')
         elif args.input_text != '':
@@ -76,7 +79,11 @@ def main():
     total_num_samples = args.num_samples * args.num_repetitions
 
     print("Creating model and diffusion...")
-    model, diffusion = create_model_and_diffusion(args, data)
+    # import ipdb; ipdb.set_trace()
+    if args.emp:
+        model, diffusion = create_emp_model_and_diffusion(args, None)
+    else:
+        model, diffusion = create_model_and_diffusion(args, data)
 
     print(f"Loading checkpoints from [{args.model_path}]...")
     state_dict = torch.load(args.model_path, map_location='cpu')
@@ -160,7 +167,7 @@ def main():
         print(f"created {len(all_motions) * args.batch_size} samples")
 
     nrows = len(all_motions[0])
-    ncols = args.num_repetitions+1 # bc we added the ground truth
+    ncols = args.num_repetitions+1  # bc we added the ground truth
     all_motions = np.vstack(all_motions)
 
     viz_motions(nrows, ncols, out_path, all_motions, dataset=data.dataset.dataname, all_text=all_text)
@@ -171,7 +178,7 @@ def load_dataset(args, max_frames, n_frames, split):
     data = get_dataset_loader(name=args.condition_dataset,
                               batch_size=args.batch_size,
                               num_frames=max_frames,
-                              split=split,
+                              split=args.condition_split,
                               hml_mode='text_only')
     data.fixed_length = n_frames
     return data
