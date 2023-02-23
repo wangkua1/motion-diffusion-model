@@ -31,7 +31,6 @@ class Rotation2xyz:
             assert (J,D)==(154,1), "data_rep [rot_6d] should be shape (N,154,1,T)"
             x = x.permute(0,3,1,2)
             fc = (x[...,-4:,[0]]).permute(0,2,3,1)                  # (N,4,1,T), foot contacts
-            (x[...,-4:,[0]]).permute(0,2,3,1)                       # (N,4,1,T)
             x=(x[...,:-4,[0]]).reshape(N,T,25,6).permute(0,2,3,1)   # (N,25,6,T) 
 
         if mask is None:
