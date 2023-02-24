@@ -76,6 +76,14 @@ def collate(batch):
         vid_names = [np.array(b['vid_name']) for b in notnone_batches]
         cond['y'].update({'vid_name': np.stack(vid_names)})  # (T,featdim)
 
+    if 'kp_2d' in notnone_batches[0]:
+        kp_2d = [torch.tensor(b['kp_2d']) for b in notnone_batches]
+        cond['y'].update({'kp_2d': torch.stack(kp_2d)}) 
+
+    if 'theta' in notnone_batches[0]:
+        theta = [torch.tensor(b['theta']) for b in notnone_batches]
+        cond['y'].update({'theta': torch.stack(theta)})  
+
     return motion, cond
 
 

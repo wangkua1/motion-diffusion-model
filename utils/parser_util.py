@@ -240,6 +240,10 @@ def add_emp_options(parser):
     group.add_argument("--eval_hmr_every", default=5, type=int)
     group.add_argument("--model_path", default='', type=str)
     group.add_argument("--use_dpm_solver", default=1, type=int)
+    group.add_argument("--update_hmr_every", default=1, type=int)
+    group.add_argument("--e_3d_loss_weight", default=60, type=int)
+    group.add_argument("--e_pose_loss_weight", default=60, type=int)
+    group.add_argument("--e_shape_loss_weight", default=60, type=int)
     
 def train_emp_args():
     parser = ArgumentParser()
