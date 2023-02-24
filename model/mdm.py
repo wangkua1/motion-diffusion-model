@@ -13,7 +13,13 @@ class MDM(nn.Module):
     def __init__(self, modeltype, njoints, nfeats, num_actions, translation, pose_rep, glob, glob_rot,
                  latent_dim=256, ff_size=1024, num_layers=8, num_heads=4, dropout=0.1,
                  ablation=None, activation="gelu", legacy=False, data_rep='rot6d', dataset='amass', clip_dim=512,
-                 arch='trans_enc', emb_trans_dec=False, clip_version=None, video_dim=2048, video_arch='linear', **kargs):
+                 arch='trans_enc', emb_trans_dec=False, clip_version=None, video_dim=2048, video_cond_mode='concatenate_input', 
+                 feature_mask_ratio=0.0, feature_mask_block_size=5, **kargs):
+        """
+        video_cond_mode ... it's assumed that the features are passed through a single projection layer. 
+            "concatenate_input": concat the features to the input noise vector. 
+            "add_input": add features to the input noise.
+        """
         super().__init__()
 
         self.legacy = legacy
@@ -48,6 +54,7 @@ class MDM(nn.Module):
 
         self.cond_mode = kargs.get('cond_mode', 'no_cond')
         self.cond_mask_prob = kargs.get('cond_mask_prob', 0.)
+        self.video_cond_mode=video_cond_mode
         self.arch = arch
         self.gru_emb_dim = self.latent_dim if self.arch == 'gru' else 0
         self.input_process = InputProcess(self.data_rep, self.input_feats+self.gru_emb_dim, self.latent_dim)
@@ -83,7 +90,7 @@ class MDM(nn.Module):
         else:
             raise ValueError('Please choose correct architecture [trans_enc, trans_dec, gru]')
 
-        if self.cond_mode == 'video':
+        if (self.cond_mode=='video') and (self.video_cond_mode=='concatenate_input'):
             self.final_layer = nn.Linear(self.latent_dim * 2, self.latent_dim)
         else:
             self.final_layer = lambda x: x
@@ -101,16 +108,22 @@ class MDM(nn.Module):
                 self.embed_action = EmbedAction(self.num_actions, self.latent_dim)
                 print('EMBED ACTION')
             if 'video' in self.cond_mode:
-                if video_arch=='linear':
-                    self.embed_video = EmbedVideoLinear(self.video_dim, self.latent_dim)
-                elif video_arch=='vibe': # for now just hard code parameters. 
-                    self.embed_video = EmbedVideoLinear(self.video_dim, self.latent_dim)
+                # feature masking parameters
+                self.feature_mask_ratio = feature_mask_ratio
+                assert 0<=feature_mask_ratio<=1, "mask ratio must be in [0,1]"
+                self.feature_mask_block_size = feature_mask_block_size
+
+                # linear projection of video. This object does random video feature masking.
+                self.embed_video = EmbedVideo(video_dim, latent_dim, arch="linear",  feature_mask_ratio=self.feature_mask_ratio, 
+                                    feature_mask_block_size=self.feature_mask_block_size)
                 print("EMBED VIDEO")
 
         self.output_process = OutputProcess(self.data_rep, self.input_feats, self.latent_dim, self.njoints,
                                             self.nfeats)
 
         self.rot2xyz = Rotation2xyz(device='cpu', dataset=self.dataset)
+
+        
 
     def parameters_wo_clip(self):
         return [p for name, p in self.named_parameters() if not name.startswith('clip_model.')]
@@ -185,10 +198,15 @@ class MDM(nn.Module):
             if 'video' in self.cond_mode:
                 features = y['features'].cuda()
                 shape = features.shape
-                video_emb = self.embed_video(features.view(-1, features.shape[-1]))
-                video_emb = video_emb.view(*shape[:2], video_emb.shape[-1]).permute(1,0,2)
-                # video_emb = self.mask_cond(video_emb, force_mask=force_mask) 
-                x = torch.cat((x, video_emb), axis=-1)
+                video_emb = self.embed_video(features) # (N,T,D)
+                video_emb = video_emb.permute(1,0,2)                  # (T,N,D)
+                # video_emb = self.embed_video(features.view(-1, features.shape[-1]))
+                # video_emb = video_emb.view(*shape[:2], video_emb.shape[-1]).permute(1,0,2)
+                if self.video_cond_mode=="concatenate_input":
+                    # video_emb = self.mask_cond(video_emb, force_mask=force_mask) 
+                    x = torch.cat((x, video_emb), axis=-1)
+                elif self.video_cond_mode=="add_input":
+                    x = x+video_emb
             
             # adding the timestep embed
             xseq = torch.cat((emb, x), axis=0)  # [seqlen+1, bs, d]
@@ -328,18 +346,73 @@ class EmbedAction(nn.Module):
         output = self.action_embedding[idx]
         return output
 
-class EmbedVideoLinear(nn.Module):
-    def __init__(self, video_dim, latent_dim, arch='linear'):
+class EmbedVideo(nn.Module):
+    def __init__(self, video_dim, latent_dim, arch="linear", 
+        feature_mask_ratio=0.0, feature_mask_block_size=5):
         """
-        mode options
+        Do a linear projection and 
             'arch': a single linear layer projection. 
-            'vibe': vibe-style encoder with GRUs+regressor
+            `feature_mask_ratio`: ratio of frame blocks to mask out when doing random sampling
+            
         """
         super().__init__()
-        self.fc = nn.Linear(video_dim, latent_dim)
+        self.feature_mask_ratio=feature_mask_ratio
+        self.feature_mask_block_size=feature_mask_block_size
+        
+        if arch=="linear":
+            self.fc = nn.Linear(video_dim, latent_dim)
+        else:
+            raise
 
-    def forward(self, input):
-        return self.fc(input)
+    def get_feature_mask(self, x):
+        """
+        Randomly mask out video features in blocks along the time dimension.
+
+        Sort of similar approach to https://github.com/facebookresearch/mae/blob/6a2ba402291005b003a70e99f7c87d1a2c376b0d/models_mae.py
+
+        Returns: 
+            mask shape (N,T)
+        """
+        N,T,D = x.shape 
+        if self.feature_mask_block_size >=T: 
+            print(f"Warning: masking won't work bc block size [self.feature_mask_block_size] bigger than sample frames [T]")
+        mask_features = torch.ones((N,T), dtype=bool)
+        if self.feature_mask_ratio<=0:
+            return mask_features
+
+        # Divide the features into evenly-sized blocks (truncates so that leftover elements are never masked)
+        # The actual mask ratio will never be more than the requested. E.g. 0.3 may actually become 0.27 if the 
+        L = T//self.feature_mask_block_size # number of blocks that fit in this sequence
+        len_mask = 1-int(self.feature_mask_ratio*L)    # number of blocks to mask out
+
+        # for each batch index, generate a unique permutation of block indices
+        noise = torch.rand(N, L)                    # noise in [0, 1]
+        ids_shuffle = torch.argsort(noise, dim=1)   # ascend: small is mask
+        ids_mask_blocks = ids_shuffle[:,:len_mask]  # block indexes to mask
+        
+        # convert block indices to frame indices
+        ids_mask_frames = ids_mask_blocks*self.feature_mask_block_size # first element of each block
+        ids_mask_frames_ = [ids_mask_frames]
+        for i in range(1, self.feature_mask_block_size):
+            ids_mask_frames_.append(ids_mask_frames+i)   # add the adjacent elements
+        ids_mask_frames_ = torch.hstack(ids_mask_frames_)
+        
+        # set the mask elements to zero and return
+        mask_features[torch.arange(N).unsqueeze(1), ids_mask_frames_] = torch.zeros_like(ids_mask_frames_, dtype=bool)
+        return mask_features.to(x.device)
+        
+    def forward(self, x):
+        """ 
+        N batches of T frames of dimension D (N,T,D). Do random masking on randomly within 
+        the T sequence. Put all frames through the same MLP. 
+        """
+        N,T,D = x.shape
+        mask = self.get_feature_mask(x)
+        x = mask.unsqueeze(-1)*x
+
+        shape = x.shape 
+        x = self.fc(x.view(N*T,D)).view(N,T,-1)
+        return x
 
 class EmbedVideoVibe(nn.Module):
     def __init__(self, video_dim, latent_dim, arch='linear'):

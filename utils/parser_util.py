@@ -107,8 +107,8 @@ def add_model_options(parser):
     group.add_argument("--unconstrained", action='store_true',
                        help="Model is trained unconditionally. That is, it is constrained by neither text nor action. "
                             "Currently tested on HumanAct12 only.")
-    
-
+    group.add_argument("--feature_mask_ratio", default=0, type=float, help="Video embedding: ratio of sequence to mask. Default 0 is no masking")
+    group.add_argument("--feature_mask_block_size", default=5, type=int, help="Video embedding masking size. Ignored if feature_mask_ratio=0")
 
 
 def add_data_options(parser):
