@@ -31,9 +31,8 @@ def parse_and_load_from_model(parser, model_path=None):
         if a in model_args.keys():
             setattr(args, a, model_args[a])
 
-        elif 'cond_mode' in model_args: # backward compitability
-            unconstrained = (model_args['cond_mode'] == 'no_cond')
-            setattr(args, 'unconstrained', unconstrained)
+        elif args.cond_mode=='unconditional': # backward compitability
+            args.unconstrained=True
 
         else:
             print('Warning: was not able to load [{}], using default value [{}] instead.'.format(a, args.__dict__[a]))
@@ -104,9 +103,11 @@ def add_model_options(parser):
     group.add_argument("--lambda_rcxyz", default=0.0, type=float, help="Joint positions loss.")
     group.add_argument("--lambda_vel", default=0.0, type=float, help="Joint velocity loss.")
     group.add_argument("--lambda_fc", default=0.0, type=float, help="Foot contact loss.")
-    group.add_argument("--unconstrained", action='store_true',
-                       help="Model is trained unconditionally. That is, it is constrained by neither text nor action. "
-                            "Currently tested on HumanAct12 only.")
+    group.add_argument("--cond_mode", default='video', choices=['video','unconditional','text','action'], type=str,
+                       help="MDM conditioning mode. Default is video.")
+    # group.add_argument("--unconstrained", action='store_true',
+    #                    help="Model is trained unconditionally. That is, it is constrained by neither text nor action. "
+    #                         "Currently tested on HumanAct12 only.")
     group.add_argument("--feature_mask_ratio", default=0, type=float, help="Video embedding: ratio of sequence to mask. Default 0 is no masking")
     group.add_argument("--feature_mask_block_size", default=5, type=int, help="Video embedding masking size. Ignored if feature_mask_ratio=0")
 
@@ -161,6 +162,8 @@ def add_training_options(parser):
                        help="Num_workers param from torch.utils.data.DataLoader")
     group.add_argument("--foot_vel_threshold", default=0.01, type=float, 
                         help="Velocity of foot joints that indicate the foot should not slide.")
+    group.add_argument("--pretrained_model_path", default="", type=str, 
+                        help="Pretrained `model.pt` file.")
     
 
 

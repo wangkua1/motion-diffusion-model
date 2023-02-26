@@ -69,11 +69,18 @@ def collate(batch):
     if 'joints3D' in notnone_batches[0]:
         joints3D = [torch.tensor(b['joints3D']) for b in notnone_batches]
         cond['y'].update({'joints3D': torch.stack(joints3D)})  # (T, 14, 3)
+    
     # video name for vibe datasets
     if 'vid_name' in notnone_batches[0]:
         import numpy as np  # this data is strings.
         # import ipdb; ipdb.set_trace()
         vid_names = [np.array(b['vid_name']) for b in notnone_batches]
+        cond['y'].update({'vid_name': np.stack(vid_names)})  # (T,featdim)
+
+    if 'img_name' in notnone_batches[0]:
+        import numpy as np  # this data is strings.
+        # import ipdb; ipdb.set_trace()
+        vid_names = [np.array(b['img_name']) for b in notnone_batches]
         cond['y'].update({'vid_name': np.stack(vid_names)})  # (T,featdim)
 
     if 'kp_2d' in notnone_batches[0]:

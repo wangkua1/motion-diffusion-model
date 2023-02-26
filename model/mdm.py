@@ -194,6 +194,7 @@ class MDM(nn.Module):
             x = torch.cat((x_reshaped, emb_gru), axis=1)  #[bs, d+joints*feat, 1, #frames]
 
         x = self.input_process(x)
+
         if self.arch == 'trans_enc':
             if 'video' in self.cond_mode:
                 features = y['features'].cuda()
@@ -381,15 +382,15 @@ class EmbedVideo(nn.Module):
             return mask_features
 
         # Divide the features into evenly-sized blocks (truncates so that leftover elements are never masked)
-        # The actual mask ratio will never be more than the requested. E.g. 0.3 may actually become 0.27 if the 
+        # The actual mask ratio will never be more than requested. E.g. 0.3 may actually become 0.27 bc of truncation
         L = T//self.feature_mask_block_size # number of blocks that fit in this sequence
-        len_mask = 1-int(self.feature_mask_ratio*L)    # number of blocks to mask out
+        len_mask = int(L*self.feature_mask_ratio)   # number of blocks to mask out
 
         # for each batch index, generate a unique permutation of block indices
         noise = torch.rand(N, L)                    # noise in [0, 1]
-        ids_shuffle = torch.argsort(noise, dim=1)   # ascend: small is mask
+        ids_shuffle = torch.argsort(noise, dim=1)   # ascend: smaller is mask
         ids_mask_blocks = ids_shuffle[:,:len_mask]  # block indexes to mask
-        
+    
         # convert block indices to frame indices
         ids_mask_frames = ids_mask_blocks*self.feature_mask_block_size # first element of each block
         ids_mask_frames_ = [ids_mask_frames]
@@ -399,30 +400,20 @@ class EmbedVideo(nn.Module):
         
         # set the mask elements to zero and return
         mask_features[torch.arange(N).unsqueeze(1), ids_mask_frames_] = torch.zeros_like(ids_mask_frames_, dtype=bool)
-        return mask_features.to(x.device)
+        return mask_features
         
     def forward(self, x):
         """ 
-        N batches of T frames of dimension D (N,T,D). Do random masking on randomly within 
-        the T sequence. Put all frames through the same MLP. 
+        x has shape (N,T,D): N batches of T frames of dimension D . 
+        Do random masking on randomly within the T sequence. 
+        Put all frames through the same MLP. 
         """
         N,T,D = x.shape
-        mask = self.get_feature_mask(x)
-        x = mask.unsqueeze(-1)*x
+        if self.training:
+            mask = self.get_feature_mask(x).to(x.device)
+            x = mask.unsqueeze(-1)*x
 
         shape = x.shape 
         x = self.fc(x.view(N*T,D)).view(N,T,-1)
         return x
 
-class EmbedVideoVibe(nn.Module):
-    def __init__(self, video_dim, latent_dim, arch='linear'):
-        """
-        mode options
-            'arch': a single linear layer projection. 
-            'vibe': vibe-style encoder with GRUs+regressor
-        """
-        super().__init__()
-        self.fc = nn.Linear(video_dim, latent_dim)
-
-    def forward(self, input):
-        return self.fc(input)

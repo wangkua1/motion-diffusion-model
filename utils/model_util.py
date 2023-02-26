@@ -4,10 +4,32 @@ from mdm.diffusion import gaussian_diffusion as gd
 from mdm.diffusion.respace import SpacedDiffusion, space_timesteps
 
 
-def load_model_wo_clip(model, state_dict):
+def load_model_wo_clip(model, state_dict, BACK_COMPATIBLE=True):
+    """
+    Load the model. Handle some backcompatibility between models.
+    """
     missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
+    
+    
+    ## some backcompatibility stuff - probably remove this later ##
+    if BACK_COMPATIBLE: 
+        # case where the model was trained before hmr_module was created
+        if any([k.startswith('hmr_module.') for k in missing_keys]):
+            print("*"*80)
+            print("WARNING: HMR head not pretrained ... hmr eval metrics may be unreliable")
+
+        # case where the model was trained before EmbedVideo module was a different class
+        if 'embed_video.weight' in unexpected_keys:
+            def chang_key_name(state_dict, key_old, key_new):
+                val = state_dict.pop(key_old) # throws error if not present
+                state_dict.update({key_new:val})
+            chang_key_name(state_dict, 'embed_video.weight', 'embed_video.fc.weight')
+            chang_key_name(state_dict, 'embed_video.bias', 'embed_video.fc.bias')
+            missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
+
     assert len(unexpected_keys) == 0
-    assert all([k.startswith('clip_model.') for k in missing_keys])
+
+    assert all([(k.startswith('clip_model.') or k.startswith('hmr_module.')) for k in missing_keys])
 
 
 def create_emp_model_and_diffusion(args, data):
@@ -26,14 +48,7 @@ def get_model_args(args, data):
     # default args
     clip_version = 'ViT-B/32'
     action_emb = 'tensor'
-    if args.unconstrained:
-        cond_mode = 'no_cond'
-    elif args.dataset in ['kit', 'humanml']:
-        cond_mode = 'text'
-    elif args.dataset in ['h36m']:
-        cond_mode = 'video'
-    else:
-        cond_mode = 'action'
+    cond_mode = args.cond_mode
         
     num_actions = 1
     if data is not None:
