@@ -59,7 +59,7 @@ class MDM(nn.Module):
         self.gru_emb_dim = self.latent_dim if self.arch == 'gru' else 0
         self.input_process = InputProcess(self.data_rep, self.input_feats+self.gru_emb_dim, self.latent_dim)
 
-        self.d_model = self.latent_dim * 2  if self.cond_mode == 'video' else self.latent_dim
+        self.d_model = self.latent_dim * 2  if (self.cond_mode == 'video' and self.arch == 'trans_enc') else self.latent_dim
 
         self.sequence_pos_encoder = PositionalEncoding(self.d_model, self.dropout)
         self.emb_trans_dec = emb_trans_dec
@@ -185,6 +185,12 @@ class MDM(nn.Module):
         if 'action' in self.cond_mode:
             action_emb = self.embed_action(y['action'])
             emb += self.mask_cond(action_emb, force_mask=force_mask)
+        if 'video' in self.cond_mode:
+            features = y['features'].cuda()
+            shape = features.shape
+            video_emb = self.embed_video(features) # (N,T,D)
+            video_emb = video_emb.permute(1,0,2)                  # (T,N,D)
+            ## do not add to `emb`
         
         if self.arch == 'gru':
             x_reshaped = x.reshape(bs, njoints*nfeats, 1, nframes)
@@ -197,12 +203,6 @@ class MDM(nn.Module):
 
         if self.arch == 'trans_enc':
             if 'video' in self.cond_mode:
-                features = y['features'].cuda()
-                shape = features.shape
-                video_emb = self.embed_video(features) # (N,T,D)
-                video_emb = video_emb.permute(1,0,2)                  # (T,N,D)
-                # video_emb = self.embed_video(features.view(-1, features.shape[-1]))
-                # video_emb = video_emb.view(*shape[:2], video_emb.shape[-1]).permute(1,0,2)
                 if self.video_cond_mode=="concatenate_input":
                     # video_emb = self.mask_cond(video_emb, force_mask=force_mask) 
                     x = torch.cat((x, video_emb), axis=-1)
@@ -216,15 +216,11 @@ class MDM(nn.Module):
             output = self.final_layer(output)
 
         elif self.arch == 'trans_dec':
-            if self.emb_trans_dec:
-                xseq = torch.cat((emb, x), axis=0)
-            else:
-                xseq = x
-            xseq = self.sequence_pos_encoder(xseq)  # [seqlen+1, bs, d]
-            if self.emb_trans_dec:
-                output = self.seqTransDecoder(tgt=xseq, memory=emb)[1:] # [seqlen, bs, d] # FIXME - maybe add a causal mask
-            else:
-                output = self.seqTransDecoder(tgt=xseq, memory=emb)
+            assert self.cond_mode=='video'
+            xseq = torch.cat((emb, x), axis=0)  # [seqlen+1, bs, d] concat diffusion timestep `t` embedding
+            xseq = self.sequence_pos_encoder(xseq)  # [seqlen+1, bs, d] additive positional embedding
+            output = self.seqTransDecoder(tgt=xseq, memory=video_emb)[1:] # [seqlen, bs, d] transformer+cross attention
+
         elif self.arch == 'gru':
             xseq = x
             xseq = self.sequence_pos_encoder(xseq)  # [seqlen, bs, d]
