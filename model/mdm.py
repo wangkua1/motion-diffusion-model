@@ -13,10 +13,10 @@ class MDM(nn.Module):
     def __init__(self, modeltype, njoints, nfeats, num_actions, translation, pose_rep, glob, glob_rot,
                  latent_dim=256, ff_size=1024, num_layers=8, num_heads=4, dropout=0.1,
                  ablation=None, activation="gelu", legacy=False, data_rep='rot6d', dataset='amass', clip_dim=512,
-                 arch='trans_enc', emb_trans_dec=False, clip_version=None, video_dim=2048, video_cond_mode='concatenate_input', 
+                 arch='trans_enc', emb_trans_dec=False, clip_version=None, video_dim=2048, video_cond_input='concat', 
                  feature_mask_ratio=0.0, feature_mask_block_size=5, **kargs):
         """
-        video_cond_mode ... it's assumed that the features are passed through a single projection layer. 
+        video_cond_input ... it's assumed that the features are passed through a single projection layer. 
             "concatenate_input": concat the features to the input noise vector. 
             "add_input": add features to the input noise.
         """
@@ -54,12 +54,15 @@ class MDM(nn.Module):
 
         self.cond_mode = kargs.get('cond_mode', 'no_cond')
         self.cond_mask_prob = kargs.get('cond_mask_prob', 0.)
-        self.video_cond_mode=video_cond_mode
+        self.video_cond_input = video_cond_input
+        if (self.cond_mode=="video") and (video_cond_input not in ('concat','add')):
+            assert arch=='trans_dec', "Video conditioning must be added to the input or through transformer decoder or both"
         self.arch = arch
         self.gru_emb_dim = self.latent_dim if self.arch == 'gru' else 0
         self.input_process = InputProcess(self.data_rep, self.input_feats+self.gru_emb_dim, self.latent_dim)
 
-        self.d_model = self.latent_dim * 2  if (self.cond_mode == 'video' and self.arch == 'trans_enc') else self.latent_dim
+        self.d_model = self.latent_dim*2  if (self.cond_mode=='video' and self.video_cond_input=='concat') \
+                                            else self.latent_dim
 
         self.sequence_pos_encoder = PositionalEncoding(self.d_model, self.dropout)
         self.emb_trans_dec = emb_trans_dec
@@ -77,7 +80,7 @@ class MDM(nn.Module):
                                                          num_layers=self.num_layers)
         elif self.arch == 'trans_dec':
             print("TRANS_DEC init")
-            seqTransDecoderLayer = nn.TransformerDecoderLayer(d_model=self.latent_dim,
+            seqTransDecoderLayer = nn.TransformerDecoderLayer(d_model=self.d_model,
                                                               nhead=self.num_heads,
                                                               dim_feedforward=self.ff_size,
                                                               dropout=self.dropout,
@@ -90,7 +93,7 @@ class MDM(nn.Module):
         else:
             raise ValueError('Please choose correct architecture [trans_enc, trans_dec, gru]')
 
-        if (self.cond_mode=='video') and (self.video_cond_mode=='concatenate_input'):
+        if (self.cond_mode=='video') and (self.video_cond_input=='concat'):
             self.final_layer = nn.Linear(self.latent_dim * 2, self.latent_dim)
         else:
             self.final_layer = lambda x: x
@@ -116,6 +119,10 @@ class MDM(nn.Module):
                 # linear projection of video. This object does random video feature masking.
                 self.embed_video = EmbedVideo(video_dim, latent_dim, arch="linear",  feature_mask_ratio=self.feature_mask_ratio, 
                                     feature_mask_block_size=self.feature_mask_block_size)
+
+                # case where we concat input AND cross-attention, need to project context embeddings to 2*latent_dim
+                if self.arch=='trans_dec' and self.video_cond_input:
+                    self.embed_video_crossattn = nn.Linear(latent_dim, 2*latent_dim)
                 print("EMBED VIDEO")
 
         self.output_process = OutputProcess(self.data_rep, self.input_feats, self.latent_dim, self.njoints,
@@ -201,25 +208,35 @@ class MDM(nn.Module):
 
         x = self.input_process(x)
 
+
         if self.arch == 'trans_enc':
             if 'video' in self.cond_mode:
-                if self.video_cond_mode=="concatenate_input":
+                if self.video_cond_input=="concat":
                     # video_emb = self.mask_cond(video_emb, force_mask=force_mask) 
                     x = torch.cat((x, video_emb), axis=-1)
-                elif self.video_cond_mode=="add_input":
+                elif self.video_cond_input=="add":
                     x = x+video_emb
             
             # adding the timestep embed
             xseq = torch.cat((emb, x), axis=0)  # [seqlen+1, bs, d]
             xseq = self.sequence_pos_encoder(xseq)  # [seqlen+1, bs, d]
+
             output = self.seqTransEncoder(xseq)[1:]  # , src_key_padding_mask=~maskseq)  # [seqlen, bs, d]
             output = self.final_layer(output)
 
         elif self.arch == 'trans_dec':
             assert self.cond_mode=='video'
+            if self.video_cond_input=="concat":
+                # video_emb = self.mask_cond(video_emb, force_mask=force_mask) 
+                x = torch.cat((x, video_emb), axis=-1)
+                # case where we concat input AND cross-attention, need to project context embeddings to 2*latent_dim
+                video_emb = self.embed_video_crossattn(video_emb)
+            elif self.video_cond_input=="add":
+                x = x+video_emb
             xseq = torch.cat((emb, x), axis=0)  # [seqlen+1, bs, d] concat diffusion timestep `t` embedding
             xseq = self.sequence_pos_encoder(xseq)  # [seqlen+1, bs, d] additive positional embedding
             output = self.seqTransDecoder(tgt=xseq, memory=video_emb)[1:] # [seqlen, bs, d] transformer+cross attention
+            output = self.final_layer(output) # if concat, this will project the dimsnion back to latent_dim
 
         elif self.arch == 'gru':
             xseq = x
