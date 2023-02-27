@@ -105,7 +105,7 @@ def add_model_options(parser):
     group.add_argument("--lambda_fc", default=0.0, type=float, help="Foot contact loss.")
     group.add_argument("--cond_mode", default='video', choices=['video','unconditional','text','action'], type=str,
                        help="MDM conditioning mode. Default is video.")
-    group.add_argument("--video_cond_input", default='video', choices=['concat','add','none'], type=str,
+    group.add_argument("--video_cond_input", default='concat', choices=['concat','add','none'], type=str,
                        help="MDM conditioning mode. Default is video.")
     
     # group.add_argument("--unconstrained", action='store_true',
