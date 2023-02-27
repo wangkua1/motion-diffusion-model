@@ -80,8 +80,8 @@ def collate(batch):
     if 'img_name' in notnone_batches[0]:
         import numpy as np  # this data is strings.
         # import ipdb; ipdb.set_trace()
-        vid_names = [np.array(b['img_name']) for b in notnone_batches]
-        cond['y'].update({'vid_name': np.stack(vid_names)})  # (T,featdim)
+        img_names = [b['img_name'] for b in notnone_batches]
+        cond['y'].update({'img_name': np.stack(img_names)})  # (N, T, 1)
 
     if 'kp_2d' in notnone_batches[0]:
         kp_2d = [torch.tensor(b['kp_2d']) for b in notnone_batches]

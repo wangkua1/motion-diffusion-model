@@ -1,7 +1,9 @@
 import os
 
-#SMPL_DATA_PATH = "./body_models/smpl"
-SMPL_DATA_PATH = os.path.join(os.environ['BIO_POSE_ROOT'], 'mdm/body_models/smpl')
+if os.path.basename(os.path.expanduser('~')):
+    SMPL_DATA_PATH = "./body_models/smpl"
+else:
+    SMPL_DATA_PATH = os.path.join(os.environ['BIO_POSE_ROOT'], 'mdm/body_models/smpl')
 
 SMPL_KINTREE_PATH = os.path.join(SMPL_DATA_PATH, "kintree_table.pkl")
 SMPL_MODEL_PATH = os.path.join(SMPL_DATA_PATH, "SMPL_NEUTRAL.pkl")
