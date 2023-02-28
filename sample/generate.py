@@ -8,7 +8,7 @@ import os
 import numpy as np
 import torch
 from mdm.utils.parser_util import generate_args
-from mdm.utils.model_util import create_model_and_diffusion, load_model_wo_clip
+from mdm.utils.model_util import create_model_and_diffusion, load_model_wo_clip, create_emp_model_and_diffusion
 from mdm.utils import dist_util
 from mdm.model.cfg_sampler import ClassifierFreeSampleModel
 from mdm.data_loaders.get_data import get_dataset_loader
@@ -22,6 +22,8 @@ import ipdb
 def main():
     args = generate_args()
     fixseed(args.seed)
+    ### now only using this script for unconditional generation only - using a different one for vid-conditioning  (bc result structure is different)
+    args.unconstrained=True 
     out_path = args.output_dir
     name = os.path.basename(os.path.dirname(args.model_path))
     niter = os.path.basename(args.model_path).replace('model', '').replace('.pt', '')
@@ -119,6 +121,14 @@ def main():
 
         if args.guidance_param != 1:
             model_kwargs['y']['scale'] = torch.ones(args.batch_size, device=dist_util.dev()) * args.guidance_param
+
+        # unconditional case: if the dataset has no video features, then feed it a feature of all zeros
+        if 'features' not in model_kwargs['y'].keys():
+            bs,_,_,T = model_kwargs['y']['mask'].shape
+            model_kwargs['y']['features'] = torch.zeros((bs,T,2048), dtype=torch.float32)
+            pass
+
+            
         
         # # setting unconditional 
         # if 1:
