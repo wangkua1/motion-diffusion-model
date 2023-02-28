@@ -107,6 +107,8 @@ def add_model_options(parser):
                        help="MDM conditioning mode. Default is video.")
     group.add_argument("--video_cond_input", default='concat', choices=['concat','add','none'], type=str,
                        help="MDM conditioning mode. Default is video.")
+    group.add_argument("--video_arch", default='linear', choices=['linear','mlp','trans_enc'], type=str,
+                       help="Architecture to transform the video encoder features.")
     
     # group.add_argument("--unconstrained", action='store_true',
     #                    help="Model is trained unconditionally. That is, it is constrained by neither text nor action. "

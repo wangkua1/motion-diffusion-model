@@ -78,7 +78,8 @@ def get_model_args(args, data):
             'translation': True, 'pose_rep': data_rep, 'glob': True, 'glob_rot': True,
             'latent_dim': args.latent_dim, 'ff_size': 1024, 'num_layers': args.layers, 'num_heads': 4,
             'dropout': 0.1, 'activation': "gelu", 'data_rep': data_rep, 'cond_mode': cond_mode,
-            'cond_mask_prob': args.cond_mask_prob, 'action_emb': action_emb, 'arch': args.arch, 'video_cond_input' : args.video_cond_input,
+            'cond_mask_prob': args.cond_mask_prob, 'action_emb': action_emb, 'arch': args.arch, 
+            'video_cond_input' : args.video_cond_input, 'video_arch' : args.video_arch, 
             'emb_trans_dec': args.emb_trans_dec, 'clip_version': clip_version, 'dataset': args.dataset,
             'feature_mask_ratio': args.feature_mask_ratio, 'feature_mask_block_size':args.feature_mask_block_size}
 

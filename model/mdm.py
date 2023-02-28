@@ -14,9 +14,10 @@ class MDM(nn.Module):
                  latent_dim=256, ff_size=1024, num_layers=8, num_heads=4, dropout=0.1,
                  ablation=None, activation="gelu", legacy=False, data_rep='rot6d', dataset='amass', clip_dim=512,
                  arch='trans_enc', emb_trans_dec=False, clip_version=None, video_dim=2048, video_cond_input='concat', 
+                 video_arch="linear",
                  feature_mask_ratio=0.0, feature_mask_block_size=5, **kargs):
         """
-        video_cond_input ... it's assumed that the features are passed through a single projection layer. 
+        video_cond_input ... it's assumed that the features are papssed through a single projection layer. 
             "concatenate_input": concat the features to the input noise vector. 
             "add_input": add features to the input noise.
         """
@@ -117,7 +118,7 @@ class MDM(nn.Module):
                 self.feature_mask_block_size = feature_mask_block_size
 
                 # linear projection of video. This object does random video feature masking.
-                self.embed_video = EmbedVideo(video_dim, latent_dim, arch="linear",  feature_mask_ratio=self.feature_mask_ratio, 
+                self.embed_video = EmbedVideo(video_dim, latent_dim, arch=video_arch,  feature_mask_ratio=self.feature_mask_ratio, 
                                     feature_mask_block_size=self.feature_mask_block_size)
 
                 # case where we concat input AND cross-attention, need to project context embeddings to 2*latent_dim
@@ -374,7 +375,20 @@ class EmbedVideo(nn.Module):
         self.feature_mask_block_size=feature_mask_block_size
         
         if arch=="linear":
-            self.fc = nn.Linear(video_dim, latent_dim)
+            self.enc = nn.Linear(video_dim, latent_dim)
+        
+        elif arch=='mlp':
+            hidden_size=video_dim
+            self.enc = nn.Sequential(
+                nn.Linear(video_dim, hidden_dim), 
+                nn.ReLU(),  
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU(),  
+                nn.Linear(hidden_dim, latent_dim)  # the output layer
+                )
+
+        elif arch=='trans_enc':
+            raise
         else:
             raise
 
@@ -427,6 +441,6 @@ class EmbedVideo(nn.Module):
             x = mask.unsqueeze(-1)*x
 
         shape = x.shape 
-        x = self.fc(x.view(N*T,D)).view(N,T,-1)
+        x = self.enc(x.view(N*T,D)).view(N,T,-1) # put through encoder where 
         return x
 
