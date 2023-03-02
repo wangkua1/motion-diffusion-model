@@ -91,6 +91,10 @@ def collate(batch):
         theta = [torch.tensor(b['theta']) for b in notnone_batches]
         cond['y'].update({'theta': torch.stack(theta)})  
 
+    if 'trans' in notnone_batches[0]:
+        trans = [torch.tensor(b['trans']) for b in notnone_batches]
+        cond['y'].update({'trans': torch.stack(trans)})  
+
     return motion, cond
 
 
