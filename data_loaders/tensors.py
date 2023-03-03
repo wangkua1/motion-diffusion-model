@@ -69,6 +69,10 @@ def collate(batch):
     if 'joints3D' in notnone_batches[0]:
         joints3D = [torch.tensor(b['joints3D']) for b in notnone_batches]
         cond['y'].update({'joints3D': torch.stack(joints3D)})  # (T, 14, 3)
+
+    if 'gt_spin_joints3d' in notnone_batches[0]:
+        joints3D = [torch.tensor(b['gt_spin_joints3d']) for b in notnone_batches]
+        cond['y'].update({'gt_spin_joints3d': torch.stack(joints3D)})  # (T, 14, 3)
     
     # video name for vibe datasets
     if 'vid_name' in notnone_batches[0]:
@@ -90,6 +94,10 @@ def collate(batch):
     if 'theta' in notnone_batches[0]:
         theta = [torch.tensor(b['theta']) for b in notnone_batches]
         cond['y'].update({'theta': torch.stack(theta)})  
+
+    if 'trans' in notnone_batches[0]:
+        theta = [torch.tensor(b['trans']) for b in notnone_batches]
+        cond['y'].update({'trans': torch.stack(theta)})  
 
     return motion, cond
 

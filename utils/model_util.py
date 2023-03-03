@@ -8,9 +8,8 @@ def load_model_wo_clip(model, state_dict, BACK_COMPATIBLE=True):
     """
     Load the model. Handle some backcompatibility between models.
     """
-    missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
-    
-    
+    missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)    
+
     ## some backcompatibility stuff - probably remove this later ##
     if BACK_COMPATIBLE: 
         # case where the model was trained before hmr_module was created
@@ -25,6 +24,15 @@ def load_model_wo_clip(model, state_dict, BACK_COMPATIBLE=True):
                 state_dict.update({key_new:val})
             chang_key_name(state_dict, 'embed_video.weight', 'embed_video.fc.weight')
             chang_key_name(state_dict, 'embed_video.bias', 'embed_video.fc.bias')
+            missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
+
+        # very similar to the prior case, except the video embedding linear layer name was changed 
+        if 'embed_video.fc.weight' in unexpected_keys:
+            def chang_key_name(state_dict, key_old, key_new):
+                val = state_dict.pop(key_old) # throws error if not present
+                state_dict.update({key_new:val})
+            chang_key_name(state_dict, 'embed_video.fc.weight', 'embed_video.enc.weight')
+            chang_key_name(state_dict, 'embed_video.fc.bias', 'embed_video.enc.bias')
             missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
 
     assert len(unexpected_keys) == 0
