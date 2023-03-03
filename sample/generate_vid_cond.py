@@ -3,7 +3,14 @@ Based on mdm/sample/generate.py
 
 Generate samples conditioned on video features. This means running GHMR inference. 
 
-python -m mdm.sample.generate --model_path /path/to/model
+python -m mdm.sample.generate_vid_cond \
+                --condition_dataset nemomocap \
+                --condition_split train \
+                --model_path /oak/stanford/groups/syyeung/jmhb/mdm_save_directory/save/20230227_trainemp_exp14-0-h36m_only/000000/model000090000.pt \
+                --output_dir tmp \
+                --seed 0 \
+                --num_samples 32 \
+                --num_repetitions 2 
 
 Required args: 
     --model_path diffusion model to sample from. 
@@ -22,7 +29,7 @@ from mdm.utils.parser_util import generate_args
 from mdm.utils.model_util import create_model_and_diffusion, load_model_wo_clip
 from mdm.utils import dist_util
 from mdm.model.cfg_sampler import ClassifierFreeSampleModel
-from mdm.data_loaders.get_data import get_dataset_loader
+from  gthmr.emp_train.get_data import get_dataset_loader
 from mdm.data_loaders.humanml.scripts.motion_process import recover_from_ric
 import mdm.data_loaders.humanml.utils.paramUtil as paramUtil
 from mdm.data_loaders.humanml.utils.plot_script import plot_3d_motion
@@ -36,6 +43,7 @@ import ipdb
 def main():
     print("Generating video-conditioned samples and ")
     args = generate_args()
+    args.unconstrained=False
     print(f"    Condition dataset [{args.condition_dataset}]")
     print(f"                split [{args.condition_split}]")
     
@@ -139,9 +147,6 @@ def main():
 
         with torch.no_grad():
             NOISE_THE_INPUTS=False
-            if NOISE_THE_INPUTS:
-                print("Setting features to zero")
-                model_kwargs['y']['features'] = torch.zeros(*model_kwargs['y']['features'].shape)
             sample = sample_fn(
                 model,
                 (args.batch_size, model.njoints, model.nfeats, n_frames),

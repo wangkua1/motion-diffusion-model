@@ -57,8 +57,9 @@ def get_model_args(args, data):
     clip_version = 'ViT-B/32'
     action_emb = 'tensor'
     cond_mode = args.cond_mode
-        
+    
     num_actions = 1
+
     if data is not None:
         if hasattr(data.dataset, 'num_actions'):
             num_actions = data.dataset.num_actions
@@ -75,8 +76,8 @@ def get_model_args(args, data):
     elif hasattr(args, "data_rep"):
         data_rep = args.data_rep
         if data_rep == 'rot6d': njoints, nfeats = 25, 6
-        if data_rep == 'rot6d_fc': njoints, nfeats = 154, 1
-        if data_rep == 'rot6d_fc_shape': njoints, nfeats = 164, 1
+        elif data_rep == 'rot6d_fc': njoints, nfeats = 154, 1
+        elif data_rep == 'rot6d_fc_shape': njoints, nfeats = 164, 1
         else: raise
 
     return {'modeltype': '', 'njoints': njoints, 'nfeats': nfeats, 'num_actions': num_actions,
