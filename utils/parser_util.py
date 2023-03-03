@@ -122,9 +122,6 @@ def add_data_options(parser):
     group.add_argument("--dataset", default='', 
           # choices=['humanml', 'kit', 'humanact12', 'uestc','amass'], 
           type=str, help="Dataset name (choose from list).")
-    group.add_argument("--data_rep", default='rot6d', 
-          choices=['rot6d', 'rot6d_fc'], 
-          type=str, help="Dataset name (choose from list).")
     group.add_argument("--data_dir", default="", type=str,
                        help="If empty, will use defaults according to the specified dataset.")
     group.add_argument("--split", default='train', type=str)

@@ -62,12 +62,7 @@ def get_model_args(args, data):
     if data is not None:
         if hasattr(data.dataset, 'num_actions'):
             num_actions = data.dataset.num_actions
-        
-    # SMPL defaults
-    data_rep = 'rot6d'
-    njoints = 25
-    nfeats = 6
-
+    
     if args.dataset == 'humanml':
         data_rep = 'hml_vec'
         njoints = 263
@@ -77,10 +72,12 @@ def get_model_args(args, data):
         njoints = 251
         nfeats = 1
     # following is for datasets from the `vibe_datasets` class
-    elif data is not None and hasattr(data.dataset, 'njoints'):
-        data_rep = data.dataset.data_rep
-        njoints=data.dataset.njoints # should be 154
-        nfeats=data.dataset.nfeats   # should be 1
+    elif hasattr(args, "data_rep"):
+        data_rep = args.data_rep
+        if data_rep == 'rot6d': njoints, nfeats = 25, 6
+        if data_rep == 'rot6d_fc': njoints, nfeats = 154, 1
+        if data_rep == 'rot6d_fc_shape': njoints, nfeats = 164, 1
+        else: raise
 
     return {'modeltype': '', 'njoints': njoints, 'nfeats': nfeats, 'num_actions': num_actions,
             'translation': True, 'pose_rep': data_rep, 'glob': True, 'glob_rot': True,

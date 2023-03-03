@@ -309,7 +309,7 @@ class InputProcess(nn.Module):
         bs, njoints, nfeats, nframes = x.shape
         x = x.permute((3, 0, 1, 2)).reshape(nframes, bs, njoints*nfeats)
 
-        if self.data_rep in ['rot6d', 'xyz', 'hml_vec','rot6d_fc']:
+        if self.data_rep in ['rot6d', 'xyz', 'hml_vec','rot6d_fc','rot6d_fc_shape']:
             x = self.poseEmbedding(x)  # [seqlen, bs, d]
             return x
         elif self.data_rep == 'rot_vel':
@@ -336,7 +336,7 @@ class OutputProcess(nn.Module):
 
     def forward(self, output):
         nframes, bs, d = output.shape
-        if self.data_rep in ['rot6d', 'xyz', 'hml_vec', 'rot6d_fc']:
+        if self.data_rep in ['rot6d', 'xyz', 'hml_vec', 'rot6d_fc','rot6d_fc_shape']:
             output = self.poseFinal(output)  # [seqlen, bs, 150]
         elif self.data_rep == 'rot_vel':
             first_pose = output[[0]]  # [1, bs, d]
