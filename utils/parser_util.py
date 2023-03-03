@@ -252,6 +252,7 @@ def add_emp_options(parser):
     group.add_argument("--e_3d_loss_weight", default=60, type=int)
     group.add_argument("--e_pose_loss_weight", default=60, type=int)
     group.add_argument("--e_shape_loss_weight", default=60, type=int)
+    group.add_argument("--db_n_batches", default=-1, type=int, help='A debugging option for evaluation script.  Use only n evaluation batches.')
     
 def train_emp_args():
     parser = ArgumentParser()
