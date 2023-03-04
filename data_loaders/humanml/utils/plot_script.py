@@ -25,7 +25,7 @@ def list_cut_average(ll, intervals):
 
 
 def plot_3d_motion(save_path, kinematic_tree, joints, title, dataset, figsize=(3, 3), fps=120, radius=3,
-                   vis_mode='default', gt_frames=[], view_params={'elev':120, 'azim':-90}):
+                   vis_mode='default', gt_frames=[], view_params={'elev':120, 'azim':-90}, coloring_seq=None):
     matplotlib.use('Agg')
 
     title = '\n'.join(wrap(title, 20))
@@ -93,7 +93,7 @@ def plot_3d_motion(save_path, kinematic_tree, joints, title, dataset, figsize=(3
     data[..., 2] -= data[:, 0:1, 2]  # centering frame 0 in z
 
     #     print(trajec.shape)
-
+    # import ipdb; ipdb.set_trace()
     def update(index):
         #         print(index)
         ax.lines = []
@@ -112,6 +112,8 @@ def plot_3d_motion(save_path, kinematic_tree, joints, title, dataset, figsize=(3
         # #             ax = plot_xzPlane(ax, MINS[0], MAXS[0], 0, MINS[2], MAXS[2])
 
         used_colors = colors_blue if index in gt_frames else colors
+        if coloring_seq is not None: 
+            used_colors = colors_blue if coloring_seq[index] else colors_orange
         for i, (chain, color) in enumerate(zip(kinematic_tree, used_colors)):
             if i < 5:
                 linewidth = 4.0
