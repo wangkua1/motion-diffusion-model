@@ -4,40 +4,63 @@ import mdm.utils.rotation_conversions as geometry
 import ipdb
 from VIBE.lib.utils.geometry import rotation_matrix_to_angle_axis, rot6d_to_rotmat
 from model.smpl import SMPL, JOINTSTYPE_ROOT
+from gthmr.lib.utils.data_utils import split_rot6d_extra, combine_rot6d_extra, rotate_motion_by_rotmat
 # from .get_model import JOINTSTYPES
 JOINTSTYPES = ["a2m", "a2mpl", "smpl", "vibe", "vertices"]
 
 
 class Rotation2xyz:
+
     def __init__(self, device, dataset='amass'):
         self.device = device
         self.dataset = dataset
         self.smpl_model = SMPL().eval().to(device)
 
-    def __call__(self, x, mask, pose_rep, translation, glob,
-                 jointstype, vertstrans, betas=None, beta=0,
-                 glob_rot=None, get_rotations_back=False, 
-                 get_fc_back=False, **kwargs):
+    def __call__(self,
+                 x,
+                 mask,
+                 pose_rep,
+                 translation,
+                 glob,
+                 jointstype,
+                 vertstrans,
+                 betas=None,
+                 beta=0,
+                 glob_rot=None,
+                 get_rotations_back=False,
+                 get_fc_back=False,
+                 **kwargs):
         """
         Args:
         x: 
         """
-        N,J,D,T = x.shape
+        N, J, D, T = x.shape
+
         if pose_rep == "xyz":
             return x
-        if pose_rep=="rot6d_fc":
-            # this data rep starts with rot6d, flattends it in J dimension (dim 1), and adds 4 indicators 
-            # variables for foot and ankle "contact" (defined as having absolute velocity below a threshold)
-            assert (J,D)==(154,1), "data_rep [rot_6d] should be shape (N,154,1,T)"
-            x = x.permute(0,3,1,2)
-            fc = (x[...,-4:,[0]]).permute(0,2,3,1)                  # (N,4,1,T), foot contacts
-            x=(x[...,:-4,[0]]).reshape(N,T,25,6).permute(0,2,3,1)   # (N,25,6,T) 
+        elif pose_rep == "rot6d":
+            pass
+        elif pose_rep == "rot6d_fc":
+            assert (J, D) == (154, 1)
+            x, fc = split_rot6d_extra(x)
+        elif pose_rep == "rot6d_fc_shape":
+            assert (J, D) == (164, 1)
+            x, extra = split_rot6d_extra(x)
+            fc = extra[:, :4]  # can be returned
+            betas = extra[:, 4:14]  # (N,10,1,T)
+            betas = betas.permute(0, 3, 1, 2).reshape(N * T,
+                                                      10)  # passed to SMPL
+        else:
+            raise f"pose rep [pose_rep] not supported"
 
         if mask is None:
-            mask = torch.ones((x.shape[0], x.shape[-1]), dtype=bool, device=x.device)
+            mask = torch.ones((x.shape[0], x.shape[-1]),
+                              dtype=bool,
+                              device=x.device)
 
         if not glob and glob_rot is None:
-            raise TypeError("You must specify global rotation if glob is False")
+            raise TypeError(
+                "You must specify global rotation if glob is False")
 
         if jointstype not in JOINTSTYPES:
             raise NotImplementedError("This jointstype is not implemented.")
@@ -58,7 +81,7 @@ class Rotation2xyz:
             rotations = x_rotations[mask].view(-1, njoints, 3, 3)
         elif pose_rep == "rotquat":
             rotations = geometry.quaternion_to_matrix(x_rotations[mask])
-        elif pose_rep in ("rot6d","rot6d_fc"):
+        elif pose_rep in ("rot6d", "rot6d_fc", "rot6d_fc_shape"):
             rotations = geometry.rotation_6d_to_matrix(x_rotations[mask])
             # pred_rotmat = rot6d_to_rotmat(x_rotations[mask]).view(-1, 24, 3, 3)
             # ipdb.set_trace() ## clearly different...
@@ -67,27 +90,37 @@ class Rotation2xyz:
 
         if not glob:
             global_orient = torch.tensor(glob_rot, device=x.device)
-            global_orient = geometry.axis_angle_to_matrix(global_orient).view(1, 1, 3, 3)
+            global_orient = geometry.axis_angle_to_matrix(global_orient).view(
+                1, 1, 3, 3)
             global_orient = global_orient.repeat(len(rotations), 1, 1, 1)
         else:
             global_orient = rotations[:, 0]
             rotations = rotations[:, 1:]
 
         if betas is None:
-            betas = torch.zeros([rotations.shape[0], self.smpl_model.num_betas],
-                                dtype=rotations.dtype, device=rotations.device)
+            betas = torch.zeros(
+                [rotations.shape[0], self.smpl_model.num_betas],
+                dtype=rotations.dtype,
+                device=rotations.device)
             betas[:, 1] = beta
 
-        out = self.smpl_model(body_pose=rotations, global_orient=global_orient, betas=betas)
+        out = self.smpl_model(body_pose=rotations,
+                              global_orient=global_orient,
+                              betas=betas)
 
         # get the desirable joints
         joints = out[jointstype]
 
-        x_xyz = torch.empty(nsamples, time, joints.shape[1], 3, device=x.device, dtype=x.dtype)
+        x_xyz = torch.empty(nsamples,
+                            time,
+                            joints.shape[1],
+                            3,
+                            device=x.device,
+                            dtype=x.dtype)
         x_xyz[~mask] = 0
         x_xyz[mask] = joints
 
-        x_xyz = x_xyz.permute(0, 2, 3, 1).contiguous() # (B, J, 3, T)
+        x_xyz = x_xyz.permute(0, 2, 3, 1).contiguous()  # (B, J, 3, T)
 
         # the first translation root at the origin on the prediction
         if jointstype != "vertices":
@@ -104,6 +137,6 @@ class Rotation2xyz:
         if get_rotations_back:
             return x_xyz, rotations, global_orient
         if get_fc_back:
-            return x_xyz, fc 
+            return x_xyz, fc
         else:
             return x_xyz

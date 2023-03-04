@@ -11,12 +11,15 @@ from mdm.utils.parser_util import generate_args
 from mdm.utils.model_util import create_model_and_diffusion, load_model_wo_clip, create_emp_model_and_diffusion
 from mdm.utils import dist_util
 from mdm.model.cfg_sampler import ClassifierFreeSampleModel
-from mdm.data_loaders.get_data import get_dataset_loader
+# from mdm.data_loaders.get_data import get_dataset_loader
+from gthmr.emp_train.get_data import get_dataset_loader
 from mdm.data_loaders.humanml.scripts.motion_process import recover_from_ric
 import mdm.data_loaders.humanml.utils.paramUtil as paramUtil
 from mdm.data_loaders.humanml.utils.plot_script import plot_3d_motion
 import shutil
 from mdm.data_loaders.tensors import collate
+import argparse
+import json
 import ipdb
 
 def main():
@@ -74,19 +77,32 @@ def main():
     # (specify through the --seed flag)
     args.batch_size = args.num_samples  # Sampling a single batch from the testset, with exactly args.num_samples
 
-    print('Loading dataset...')
-    data = load_dataset(args, max_frames, n_frames) 
-    total_num_samples = args.num_samples * args.num_repetitions
+    # get the pretarined model args 
+    path_model_args = os.path.join(os.path.dirname(args.model_path),
+                                   "args.json")
+    if not os.path.exists(path_model_args):
+        raise ValueError(f"Model path [{args.model_path}] must be in the same" \
+                        "directory as its model args file: [args.json]")
+    with open(path_model_args, 'r') as f:
+        args_pretrained_model = argparse.Namespace(**json.load(f))
+    args.data_rep = args_pretrained_model.data_rep
 
+    args.dataset = 'h36m'
+
+    ipdb.set_trace()
     print("Creating model and diffusion...")
     if args.emp:
-        model, diffusion = create_emp_model_and_diffusion(args, None)
+        model, diffusion = create_emp_model_and_diffusion(args_pretrained_model, None)
     else:
         model, diffusion = create_model_and_diffusion(args, data)
 
     print(f"Loading checkpoints from [{args.model_path}]...")
     state_dict = torch.load(args.model_path, map_location='cpu')
     load_model_wo_clip(model, state_dict)
+
+    print('Loading dataset...')
+    data = load_dataset(args, max_frames, n_frames) 
+    total_num_samples = args.num_samples * args.num_repetitions 
 
     # model.cond_mode="no_cond"
     if args.guidance_param != 1 and model.cond_mode!="no_cond": # only do cfgsampler for conditional models
@@ -163,7 +179,7 @@ def main():
         rot2xyz_pose_rep = 'xyz' if model.data_rep in ['xyz', 'hml_vec'] else model.data_rep
         rot2xyz_mask = None if rot2xyz_pose_rep == 'xyz' else model_kwargs['y']['mask'].reshape(args.batch_size, n_frames).bool()
 
-        sample = model.rot2xyz(x=sample, mask=rot2xyz_mask, pose_rep=rot2xyz_pose_rep, glob=True, translation=True,
+        sample = model.rot2xyz(x=sample, mask=rot2xyz_mask, pose_rep=model.data_rep, glob=True, translation=True,
                                jointstype='smpl', vertstrans=True, betas=None, beta=0, glob_rot=None, data_rep=model.data_rep,
                                get_rotations_back=False)
 
