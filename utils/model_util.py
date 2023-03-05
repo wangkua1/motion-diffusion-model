@@ -79,6 +79,7 @@ def get_model_args(args, data):
         elif data_rep == 'rot6d_fc': njoints, nfeats = 154, 1
         elif data_rep == 'rot6d_fc_shape': njoints, nfeats = 164, 1
         else: raise
+    else: raise
 
     return {'modeltype': '', 'njoints': njoints, 'nfeats': nfeats, 'num_actions': num_actions,
             'translation': True, 'pose_rep': data_rep, 'glob': True, 'glob_rot': True,

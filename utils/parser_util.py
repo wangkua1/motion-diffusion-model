@@ -162,8 +162,6 @@ def add_training_options(parser):
                        help="If not empty, will start from the specified checkpoint (path to model###.pt file).")
     group.add_argument("--num_workers", default=0, type=int,
                        help="Num_workers param from torch.utils.data.DataLoader")
-    group.add_argument("--foot_vel_threshold", default=0.01, type=float, 
-                        help="Velocity of foot joints that indicate the foot should not slide.")
     group.add_argument("--pretrained_model_path", default="", type=str, 
                         help="Pretrained `model.pt` file.")
     
