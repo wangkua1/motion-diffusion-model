@@ -33,6 +33,8 @@ class Rotation2xyz:
         """
         Args:
         x: 
+        translation: (bool) whether the `x` sample contains the translation 
+        vertstrans: (bool) whether to apply translation to the root. 
         """
         N, J, D, T = x.shape
 
@@ -90,8 +92,11 @@ class Rotation2xyz:
 
         if not glob:
             global_orient = torch.tensor(glob_rot, device=x.device)
-            global_orient = geometry.axis_angle_to_matrix(global_orient).view(
-                1, 1, 3, 3)
+            import roma
+            global_orient = roma.rotvec_to_rotmat(global_orient).view(
+                1, 1, 3, 3).float()
+            # global_orient = geometry.axis_angle_to_matrix(global_orient).view(
+            #     1, 1, 3, 3).float()
             global_orient = global_orient.repeat(len(rotations), 1, 1, 1)
         else:
             global_orient = rotations[:, 0]
@@ -104,9 +109,9 @@ class Rotation2xyz:
                 device=rotations.device)
             betas[:, 1] = beta
 
-        out = self.smpl_model(body_pose=rotations,
-                              global_orient=global_orient,
-                              betas=betas)
+        out = self.smpl_model(body_pose=rotations.float(),
+                              global_orient=global_orient.float(),
+                              betas=betas.float())
 
         # get the desirable joints
         joints = out[jointstype]
