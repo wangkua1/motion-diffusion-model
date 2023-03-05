@@ -127,7 +127,6 @@ def get_model_args(args, data):
         'feature_mask_block_size': args.feature_mask_block_size
     }
 
-
 def create_gaussian_diffusion(args):
     # default params
     predict_xstart = True  # we always predict x_start (a.k.a. x0), that's our deal!
