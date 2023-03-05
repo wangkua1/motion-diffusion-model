@@ -93,8 +93,8 @@ def get_model_args(args, data):
         if data_rep == 'rot6d': njoints, nfeats = 25, 6
         elif data_rep == 'rot6d_fc': njoints, nfeats = 154, 1
         elif data_rep == 'rot6d_fc_shape': njoints, nfeats = 164, 1
-        elif data_rep in ('rot6d_fc_shape_axyz', 'rot6d_fc_shape_axyz'):
-            njoints, nfeats = 236, 1
+        elif data_rep == 'rot6d_fc_shape_axyz': njoints, nfeats = 236, 1
+        elif data_rep == 'rot6d_fc_shape_axyz_avel': njoints, nfeats = 308, 1
         else:
             raise
 
