@@ -39,6 +39,7 @@ class MDM(nn.Module):
                  video_arch="linear",
                  feature_mask_ratio=0.0,
                  feature_mask_block_size=5,
+                 video_arch_experiment=0,
                  **kargs):
         """
         video_cond_input ... it's assumed that the features are papssed through a single projection layer. 
@@ -153,13 +154,14 @@ class MDM(nn.Module):
                 assert 0 <= feature_mask_ratio <= 1, "mask ratio must be in [0,1]"
                 self.feature_mask_block_size = feature_mask_block_size
 
-                # linear projection of video. This object does random video feature masking.
+                # projection video features. Random video feature masking is handled here.
                 self.embed_video = EmbedVideo(
                     video_dim,
                     latent_dim,
                     arch=video_arch,
                     feature_mask_ratio=self.feature_mask_ratio,
-                    feature_mask_block_size=self.feature_mask_block_size)
+                    feature_mask_block_size=self.feature_mask_block_size,
+                    arch_experiment=video_arch_experiment)
 
                 # case where we concat input AND cross-attention, need to project context embeddings to 2*latent_dim
                 if self.arch == 'trans_dec' and self.video_cond_input:
@@ -446,7 +448,8 @@ class EmbedVideo(nn.Module):
                  latent_dim,
                  arch="linear",
                  feature_mask_ratio=0.0,
-                 feature_mask_block_size=5):
+                 feature_mask_block_size=5,
+                 arch_experiment=0):
         """
         Do a linear projection and 
             'arch': a single linear layer projection. 
@@ -454,6 +457,8 @@ class EmbedVideo(nn.Module):
 
         """
         super().__init__()
+        self.arch=arch
+        self.arch_experiment=arch_experiment
         self.feature_mask_ratio = feature_mask_ratio
         self.feature_mask_block_size = feature_mask_block_size
 
@@ -471,9 +476,34 @@ class EmbedVideo(nn.Module):
             )
 
         elif arch == 'trans_enc':
-            raise
+            # define the transformer encoder based on preset experiment vals
+            arch_experiment_kwargs = {
+            0 : dict(d_model=512, num_heads=4, ff_size=1024, num_layers=8),
+            1 : dict(d_model=128, num_heads=4, ff_size=256, num_layers=4),
+            2 : dict(d_model=64, num_heads=4, ff_size=128, num_layers=4),
+            }
+            kargs = arch_experiment_kwargs[arch_experiment]
+            seqTransEncoderLayer = nn.TransformerEncoderLayer(
+                d_model=kargs['d_model'],
+                nhead=kargs['num_heads'],
+                dim_feedforward=kargs['ff_size'],
+                dropout=0.1,
+                activation='gelu'
+            )
+            self.seqTransEncoderVideo = nn.TransformerEncoder(
+                    seqTransEncoderLayer, num_layers=kargs['num_layers'])
+
+            # combine the trans_enc with projection heads
+            self.enc = nn.Sequential(
+                nn.Linear(video_dim, kargs['d_model']),
+                self.seqTransEncoderVideo,
+                nn.Linear(kargs['d_model'], latent_dim)
+            )
+            #import ipdb; ipdb.set_trace()
+            
         else:
             raise
+        
 
     def get_feature_mask(self, x):
         """

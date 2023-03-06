@@ -45,8 +45,9 @@ class Rotation2xyz:
         elif pose_rep == "rot6d_fc":
             assert (J, D) == (154, 1)
             x, fc = split_rot6d_extra(x)
-        elif pose_rep == "rot6d_fc_shape":
-            assert (J, D) == (164, 1)
+        elif pose_rep in ("rot6d_fc_shape", "rot6d_fc_shape_axyz",
+                          "rot6d_fc_shape_axyz_avel"):
+            assert (J, D) in [(164, 1), (236, 1), (308, 1)]
             x, extra = split_rot6d_extra(x)
             fc = extra[:, :4]  # can be returned
             betas = extra[:, 4:14]  # (N,10,1,T)
@@ -83,7 +84,8 @@ class Rotation2xyz:
             rotations = x_rotations[mask].view(-1, njoints, 3, 3)
         elif pose_rep == "rotquat":
             rotations = geometry.quaternion_to_matrix(x_rotations[mask])
-        elif pose_rep in ("rot6d", "rot6d_fc", "rot6d_fc_shape"):
+        elif pose_rep in ("rot6d", "rot6d_fc", "rot6d_fc_shape",
+                          "rot6d_fc_shape_axyz", "rot6d_fc_shape_axyz_avel"):
             rotations = geometry.rotation_6d_to_matrix(x_rotations[mask])
             # pred_rotmat = rot6d_to_rotmat(x_rotations[mask]).view(-1, 24, 3, 3)
             # ipdb.set_trace() ## clearly different...

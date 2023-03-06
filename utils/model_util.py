@@ -124,7 +124,8 @@ def get_model_args(args, data):
         'clip_version': clip_version,
         'dataset': args.dataset,
         'feature_mask_ratio': args.feature_mask_ratio,
-        'feature_mask_block_size': args.feature_mask_block_size
+        'feature_mask_block_size': args.feature_mask_block_size,
+        'video_arch_experiment' : getattr(args, 'video_arch_experiment', 0),
     }
 
 def create_gaussian_diffusion(args):

@@ -89,7 +89,6 @@ def main():
 
     args.dataset = 'h36m'
 
-    ipdb.set_trace()
     print("Creating model and diffusion...")
     if args.emp:
         model, diffusion = create_emp_model_and_diffusion(args_pretrained_model, None)
