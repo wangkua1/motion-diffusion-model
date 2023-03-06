@@ -47,7 +47,7 @@ class Rotation2xyz:
             x, fc = split_rot6d_extra(x)
         elif pose_rep in ("rot6d_fc_shape", "rot6d_fc_shape_axyz",
                           "rot6d_fc_shape_axyz_avel"):
-            assert (J, D) in [(164, 1), (236, 1), (308, 1)]
+            assert (J, D) in [(164, 1), (236, 1), (308, 1), (25,6)]
             x, extra = split_rot6d_extra(x)
             fc = extra[:, :4]  # can be returned
             betas = extra[:, 4:14]  # (N,10,1,T)
