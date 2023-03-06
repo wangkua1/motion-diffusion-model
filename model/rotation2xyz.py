@@ -85,7 +85,7 @@ class Rotation2xyz:
             rotations = geometry.quaternion_to_matrix(x_rotations[mask])
         elif pose_rep in ("rot6d", "rot6d_fc", "rot6d_fc_shape",
                           "rot6d_fc_shape_axyz", "rot6d_fc_shape_axyz_avel",
-                          'rot6d_ks'):
+                          'rot6d_ks', 'rot6d_ks_1','rot6d_ks_2'):
             rotations = geometry.rotation_6d_to_matrix(x_rotations[mask])
             # pred_rotmat = rot6d_to_rotmat(x_rotations[mask]).view(-1, 24, 3, 3)
             # ipdb.set_trace() ## clearly different...
