@@ -23,9 +23,11 @@ Optional args:
 """
 from mdm.utils.fixseed import fixseed
 import os
+import argparse
+import json
 import numpy as np
 import torch
-from mdm.utils.parser_util import generate_args
+from mdm.utils.parser_util import generate_args, train_args
 from mdm.utils.model_util import create_model_and_diffusion, load_model_wo_clip
 from mdm.utils import dist_util
 from mdm.model.cfg_sampler import ClassifierFreeSampleModel
@@ -60,16 +62,6 @@ def main():
     if args.output_dir=="":
         args.output_dir = os.path.dirname(args.model_path)
 
-    DO_AUTO_PATH_CREATE=True
-    if DO_AUTO_PATH_CREATE:
-        out_path = os.path.join(args.output_dir,
-                                'samples_split_{}_{}_{}_seed{}'.format(args.condition_split, name, niter, args.seed))
-        if args.text_prompt != '':
-            out_path += '_' + args.text_prompt.replace(' ', '_').replace('.', '')
-        elif args.input_text != '':
-            out_path += '_' + os.path.basename(args.input_text).replace('.txt', '').replace(' ', '_').replace('.', '')
-        os.makedirs(out_path, exist_ok=True)
-
 
     print(f"Out path: [{out_path}]")
 
@@ -81,13 +73,8 @@ def main():
     # (specify through the --seed flag)
     args.batch_size = args.num_samples  # Sampling a single batch from the testset, with exactly args.num_samples
 
-    print(f'Loading dataset for conditioning features {args.condition_dataset}...')
-    data = load_dataset(args, max_frames, n_frames, split=args.condition_split )
-
-    total_num_samples = args.num_samples * args.num_repetitions
-
     print("Creating model and diffusion...")
-    # import ipdb; ipdb.set_trace()
+    """
     if args.emp:
         model, diffusion = create_emp_model_and_diffusion(args, None)
     else:
@@ -96,6 +83,48 @@ def main():
     print(f"Loading checkpoints from [{args.model_path}]...")
     state_dict = torch.load(args.model_path, map_location='cpu')
     load_model_wo_clip(model, state_dict)
+    """
+    if args.model_path != "":
+        args.pretrained_model_path = args.model_path
+        pretrained_model_path = args.pretrained_model_path
+        print(f"Loading pretrained model [{args.pretrained_model_path}]")
+        path_model_args = os.path.join(
+            os.path.dirname(args.pretrained_model_path), "args.json")
+        print("Loading ", path_model_args)
+        if not os.path.exists(path_model_args):
+            raise ValueError(f"Model path [{args.pretrained_model_path}] must be in the same" \
+                            "directory as its model args file: [args.json]")
+        with open(path_model_args, 'r') as f:
+            args_pretrained_model = argparse.Namespace(**json.load(f))
+
+        # check that the data_rep specifi
+        args.data_rep = args_pretrained_model.data_rep
+
+        # we will make `args_pretrained_model` the global args. But we want to
+        # keep some config from `args` the same, so copy those values from
+        # `args` to `args_pretrained_model`
+        for k in [
+                'condition_dataset', 'condition_split', 'num_samples',
+                'num_repetitions','output_dir', 'condition_dataset','seed', 
+                'guidance_param', 'unconstrained', 'batch_size'
+        ]:
+            setattr(args_pretrained_model, k, getattr(args, k))
+
+        # now make the pretrained config the global config
+        args = args_pretrained_model
+
+        # args.video_arch_experiment = 1
+        # load the pretrained model
+        model, diffusion = create_emp_model_and_diffusion(
+            args_pretrained_model, None)
+        state_dict = torch.load(pretrained_model_path, map_location='cpu')
+        load_model_wo_clip(model, state_dict)
+
+    print(f'Loading dataset for conditioning features {args.condition_dataset}...')
+    data = load_dataset(args, max_frames, n_frames, split=args.condition_split, 
+        data_rep=args.data_rep)
+
+    total_num_samples = args.num_samples * args.num_repetitions
 
     # model.cond_mode="no_cond"
     if args.guidance_param != 1 and model.cond_mode!="no_cond": # only do cfgsampler for conditional models
@@ -143,10 +172,13 @@ def main():
         if args.guidance_param != 1:
             model_kwargs['y']['scale'] = torch.ones(args.batch_size, device=dist_util.dev()) * args.guidance_param
 
+        ZERO_FEATURES=False
+        if ZERO_FEATURES: 
+            model_kwargs['y']['features'] = torch.zeros_like(model_kwargs['y']['features'])
+
         sample_fn = diffusion.p_sample_loop
 
         with torch.no_grad():
-            NOISE_THE_INPUTS=False
             sample = sample_fn(
                 model,
                 (args.batch_size, model.njoints, model.nfeats, n_frames),
@@ -175,15 +207,18 @@ def main():
     ncols = args.num_repetitions+1  # bc we added the ground truth
     all_motions = np.vstack(all_motions)
 
-    viz_motions(nrows, ncols, out_path, all_motions, dataset=data.dataset.dataname, all_text=all_text)
+    viz_motions(nrows, ncols, out_path, all_motions, dataset=None, all_text=all_text)
+    ipdb.set_trace()
+
     # viz_motions(nrows, ncols, out_path, all_motions, dataset=data.dataset.dataname, all_text=None)
     print(f'[Done] Results are at [{os.path.abspath(out_path)}]')
 
-def load_dataset(args, max_frames, n_frames, split):
+def load_dataset(args, max_frames, n_frames, split, data_rep):
     data = get_dataset_loader(name=args.condition_dataset,
-                              batch_size=args.batch_size,
+                              batch_size=args.num_samples,
                               num_frames=max_frames,
                               split=args.condition_split,
+                              data_rep=data_rep,
                               hml_mode='text_only')
     data.fixed_length = n_frames
     return data
