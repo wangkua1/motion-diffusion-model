@@ -138,7 +138,8 @@ def main():
             model_kwargs['y']['scale'] = torch.ones(args.batch_size, device=dist_util.dev()) * args.guidance_param
 
         # unconditional case: if the dataset has no video features, then feed it a feature of all zeros
-        if 'features' not in model_kwargs['y'].keys():
+        # if 'features' not in model_kwargs['y'].keys():
+        if 1:
             bs,_,_,T = model_kwargs['y']['mask'].shape
             model_kwargs['y']['features'] = torch.zeros((bs,T,2048), dtype=torch.float32)
             pass

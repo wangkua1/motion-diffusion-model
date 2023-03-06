@@ -379,21 +379,15 @@ class InputProcess(nn.Module):
         bs, njoints, nfeats, nframes = x.shape
         x = x.permute((3, 0, 1, 2)).reshape(nframes, bs, njoints * nfeats)
 
-        if self.data_rep in [
-                'rot6d', 'xyz', 'hml_vec', 'rot6d_fc', 'rot6d_fc_shape',
-                'rot6d_fc_shape_axyz', 'rot6d_fc_shape_axyz_avel'
-        ]:
+        if self.data_rep != 'rot_vel':
             x = self.poseEmbedding(x)  # [seqlen, bs, d]
             return x
-        elif self.data_rep == 'rot_vel':
+        else:
             first_pose = x[[0]]  # [1, bs, 150]
             first_pose = self.poseEmbedding(first_pose)  # [1, bs, d]
             vel = x[1:]  # [seqlen-1, bs, 150]
             vel = self.velEmbedding(vel)  # [seqlen-1, bs, d]
             return torch.cat((first_pose, vel), axis=0)  # [seqlen, bs, d]
-        else:
-            raise ValueError
-
 
 class OutputProcess(nn.Module):
 
@@ -410,19 +404,15 @@ class OutputProcess(nn.Module):
 
     def forward(self, output):
         nframes, bs, d = output.shape
-        if self.data_rep in [
-                'rot6d', 'xyz', 'hml_vec', 'rot6d_fc', 'rot6d_fc_shape',
-                'rot6d_fc_shape_axyz', 'rot6d_fc_shape_axyz_avel'
-        ]:
+        if self.data_rep != 'rot_vel':
             output = self.poseFinal(output)  # [seqlen, bs, 150]
-        elif self.data_rep == 'rot_vel':
+        else:
             first_pose = output[[0]]  # [1, bs, d]
             first_pose = self.poseFinal(first_pose)  # [1, bs, 150]
             vel = output[1:]  # [seqlen-1, bs, d]
             vel = self.velFinal(vel)  # [seqlen-1, bs, 150]
             output = torch.cat((first_pose, vel), axis=0)  # [seqlen, bs, 150]
-        else:
-            raise ValueError
+            
         output = output.reshape(nframes, bs, self.njoints, self.nfeats)
         output = output.permute(1, 2, 3, 0)  # [bs, njoints, nfeats, nframes]
         return output
