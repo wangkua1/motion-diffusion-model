@@ -111,7 +111,7 @@ def add_model_options(parser):
                        help="Architecture to transform the video encoder features.")
     group.add_argument("--feature_mask_ratio", default=0, type=float, help="Video embedding: ratio of sequence to mask. Default 0 is no masking")
     group.add_argument("--feature_mask_block_size", default=5, type=int, help="Video embedding masking size. Ignored if feature_mask_ratio=0")
-    group.add_argument("--feature_mask_training_epx", default=0, type=int)
+    group.add_argument("--feature_mask_training_exp", default=0, type=int)
     group.add_argument("--video_arch_experiment", default=0, type=int, help="Int lookup for video architecture in experimentation")
 
 def add_data_options(parser):

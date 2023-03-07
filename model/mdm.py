@@ -39,7 +39,9 @@ class MDM(nn.Module):
                  video_arch="linear",
                  feature_mask_ratio=0.0,
                  feature_mask_block_size=5,
+                 feature_mask_training_exp=0,
                  video_arch_experiment=0,
+                 diffusion_steps=1000,
                  **kargs):
         """
         video_cond_input ... it's assumed that the features are papssed through a single projection layer. 
@@ -67,6 +69,7 @@ class MDM(nn.Module):
         self.num_layers = num_layers
         self.num_heads = num_heads
         self.dropout = dropout
+        self.diffusion_steps = diffusion_steps
 
         self.ablation = ablation
         self.activation = activation
@@ -153,6 +156,7 @@ class MDM(nn.Module):
                 self.feature_mask_ratio = feature_mask_ratio
                 assert 0 <= feature_mask_ratio <= 1, "mask ratio must be in [0,1]"
                 self.feature_mask_block_size = feature_mask_block_size
+                self.feature_mask_training_exp = feature_mask_training_exp
 
                 # projection video features. Random video feature masking is handled here.
                 self.embed_video = EmbedVideo(
@@ -161,7 +165,9 @@ class MDM(nn.Module):
                     arch=video_arch,
                     feature_mask_ratio=self.feature_mask_ratio,
                     feature_mask_block_size=self.feature_mask_block_size,
-                    arch_experiment=video_arch_experiment)
+                    feature_mask_training_exp=self.feature_mask_training_exp,
+                    arch_experiment=video_arch_experiment,
+                    diffusion_steps=self.diffusion_steps)
 
                 # case where we concat input AND cross-attention, need to project context embeddings to 2*latent_dim
                 if self.arch == 'trans_dec' and self.video_cond_input:
@@ -389,6 +395,7 @@ class InputProcess(nn.Module):
             vel = self.velEmbedding(vel)  # [seqlen-1, bs, d]
             return torch.cat((first_pose, vel), axis=0)  # [seqlen, bs, d]
 
+
 class OutputProcess(nn.Module):
 
     def __init__(self, data_rep, input_feats, latent_dim, njoints, nfeats):
@@ -412,7 +419,7 @@ class OutputProcess(nn.Module):
             vel = output[1:]  # [seqlen-1, bs, d]
             vel = self.velFinal(vel)  # [seqlen-1, bs, 150]
             output = torch.cat((first_pose, vel), axis=0)  # [seqlen, bs, 150]
-            
+
         output = output.reshape(nframes, bs, self.njoints, self.nfeats)
         output = output.permute(1, 2, 3, 0)  # [bs, njoints, nfeats, nframes]
         return output
@@ -439,8 +446,9 @@ class EmbedVideo(nn.Module):
                  arch="linear",
                  feature_mask_ratio=0.0,
                  feature_mask_block_size=5,
-                 arch_experiment=0, 
-                 feature_mask_training_epx=0):
+                 arch_experiment=0,
+                 feature_mask_training_exp=0,
+                 diffusion_steps=1000):
         """
         Do a linear projection and 
             'arch': a single linear layer projection. 
@@ -450,9 +458,10 @@ class EmbedVideo(nn.Module):
         super().__init__()
         self.arch = arch
         self.arch_experiment = arch_experiment
-        self.feature_mask_training_epx = feature_mask_training_epx
+        self.feature_mask_training_exp = feature_mask_training_exp
         self.feature_mask_ratio = feature_mask_ratio
         self.feature_mask_block_size = feature_mask_block_size
+        self.diffusion_steps = diffusion_steps
 
         if arch == "linear":
             self.enc = nn.Linear(video_dim, latent_dim)
@@ -470,9 +479,9 @@ class EmbedVideo(nn.Module):
         elif arch == 'trans_enc':
             # define the transformer encoder based on preset experiment vals
             arch_experiment_kwargs = {
-            0 : dict(d_model=512, num_heads=4, ff_size=1024, num_layers=8),
-            1 : dict(d_model=128, num_heads=4, ff_size=256, num_layers=4),
-            2 : dict(d_model=64, num_heads=4, ff_size=128, num_layers=4),
+                0: dict(d_model=512, num_heads=4, ff_size=1024, num_layers=8),
+                1: dict(d_model=128, num_heads=4, ff_size=256, num_layers=4),
+                2: dict(d_model=64, num_heads=4, ff_size=128, num_layers=4),
             }
             kargs = arch_experiment_kwargs[arch_experiment]
             seqTransEncoderLayer = nn.TransformerEncoderLayer(
@@ -480,24 +489,19 @@ class EmbedVideo(nn.Module):
                 nhead=kargs['num_heads'],
                 dim_feedforward=kargs['ff_size'],
                 dropout=0.1,
-                activation='gelu'
-            )
+                activation='gelu')
             self.seqTransEncoderVideo = nn.TransformerEncoder(
-                    seqTransEncoderLayer, num_layers=kargs['num_layers'])
+                seqTransEncoderLayer, num_layers=kargs['num_layers'])
 
             # combine the trans_enc with projection heads
-            self.enc = nn.Sequential(
-                nn.Linear(video_dim, kargs['d_model']),
-                self.seqTransEncoderVideo,
-                nn.Linear(kargs['d_model'], latent_dim)
-            )
-            #import ipdb; ipdb.set_trace()
-            
+            self.enc = nn.Sequential(nn.Linear(video_dim, kargs['d_model']),
+                                     self.seqTransEncoderVideo,
+                                     nn.Linear(kargs['d_model'], latent_dim))
+
         else:
             raise
-        
 
-    def get_feature_mask_old(self, x, timesteps):
+    def get_feature_mask_old(self, x):
         """
         Randomly mask out video features in blocks along the time dimension.
 
@@ -549,10 +553,71 @@ class EmbedVideo(nn.Module):
         Returns: 
             mask shape (N,T)
         """
-        if self.feature_mask_training_epx==0:
-            return self.get_feature_mask_old(x, timesteps)
-        else: 
-            raise
+        if self.feature_mask_training_exp == 0:
+            # use self.feature_masking_ratio.
+            return self.get_feature_mask_old(x)
+
+        N, T, D = x.shape
+        # prepare mask
+        mask_features = torch.ones(N,T)
+        
+        # get ratios
+        ts = timesteps.float() / self.diffusion_steps # put in [0,1]
+        ratios = self.masking_rate(ts, int(self.feature_mask_training_exp))
+
+
+        # Divide the features into evenly-sized blocks. Truncate so that we always 
+        # do MORE masking than requested. 
+        L = T // self.feature_mask_block_size+1  # number of blocks that fit in this sequence
+        len_mask = (L * ratios).long()  # number of blocks to mask out
+
+        # for each batch index, generate a unique permutation of block indices
+        noise = torch.rand(N, L)  # noise in [0, 1]
+        ids_shuffle = torch.argsort(noise, dim=1)  # ascend: smaller is mask
+        
+        # unfortunate looping 
+        for i in range(len(ids_shuffle)):
+            # get the block idxs to drop 
+            ids_mask_blocks = ids_shuffle[i,:len_mask[i]]
+            # turn block ids into original frame ids 
+            ids_mask_frames = ids_mask_blocks * self.feature_mask_block_size  # first element of each block
+            ids_mask_frames_ = [ids_mask_frames]
+            for j in range(1, self.feature_mask_block_size):
+                ids_mask_frames_.append(ids_mask_frames +
+                                    j)  # add the adjacent elements
+            ids_mask_frames_ = torch.hstack(ids_mask_frames_)
+            ids_mask_frames_ = torch.clamp(ids_mask_frames_, 0, T-1)
+            mask_features[i,ids_mask_frames_] = 0       
+        
+        # import matplotlib.pyplot as plt 
+        # plt.imshow(mask_features.detach().cpu(), cmap='gray')
+        # plt.savefig(f"/home/groups/syyeung/jmhb/bio-pose/gthmr/results/20230306_masked_training/mask_samples_fac_{self.feature_mask_training_exp}.png")
+        # plt.close()
+
+        return mask_features
+
+
+    def masking_rate(self, t, feature_mask_training_exp=1):
+        """ 
+        For diffusion timestep `t`, get the masking ratio between 0 and 1.
+
+        t: (float or array-like) diffusion timestep normalized to be in [0,1].
+        mask_schedule_lookup: key (1,2,3,4,5,6,7) which looks up the noise schedule.
+            Currently it just implements 1-t**a. 
+        """
+        assert (not torch.any(t > 1)) and (not torch.any(t < 0))
+        lookup = {
+            1: 1,
+            2: 2,
+            3: 3,
+            4: 4,
+            5: 5,
+            6: 6,
+            7: 7,
+        }
+        a = lookup[feature_mask_training_exp]
+
+        return 1 - t**a
 
     def forward(self, x, timesteps):
         """ 
@@ -560,12 +625,12 @@ class EmbedVideo(nn.Module):
         Do random masking on randomly within the T sequence. 
         Put all frames through the same MLP. 
         """
-        # import ipdb; ipdb.set_trace()
         N, T, D = x.shape
         if self.training:
             mask = self.get_feature_mask(x, timesteps).to(x.device)
             x = mask.unsqueeze(-1) * x
 
+        
         shape = x.shape
         x = self.enc(x.view(N * T, D)).view(N, T,
                                             -1)  # put through encoder where

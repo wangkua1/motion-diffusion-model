@@ -128,8 +128,9 @@ def get_model_args(args, data):
         'dataset': args.dataset,
         'feature_mask_ratio': args.feature_mask_ratio,
         'feature_mask_block_size': args.feature_mask_block_size,
-        'feature_mask_training_epx' : getattr(args, 'feature_mask_training_epx', 0),
+        'feature_mask_training_exp' : getattr(args, 'feature_mask_training_exp', 0),
         'video_arch_experiment' : getattr(args, 'video_arch_experiment', 0),
+        'diffusion_steps' : args.diffusion_steps,
     }
 
 def create_gaussian_diffusion(args):
