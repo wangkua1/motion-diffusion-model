@@ -244,6 +244,7 @@ def add_emp_options(parser):
     group.add_argument("--e_pose_loss_weight", default=60, type=int)
     group.add_argument("--e_shape_loss_weight", default=60, type=int)
     group.add_argument("--db_n_batches", default=-1, type=int, help='A debugging option for evaluation script.  Use only n evaluation batches.')
+    group.add_argument("--ow_eval_batch_size", default=-1, type=int, help='Used by eval.py to overwrite the batch size.')
     group.add_argument("--baseline_name", default='', type=str, help='Used in `20230303_evaluate_baseline.py`.')
     
 def train_emp_args():
