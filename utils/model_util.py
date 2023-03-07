@@ -95,6 +95,9 @@ def get_model_args(args, data):
         elif data_rep == 'rot6d_fc_shape': njoints, nfeats = 164, 1
         elif data_rep == 'rot6d_fc_shape_axyz': njoints, nfeats = 236, 1
         elif data_rep == 'rot6d_fc_shape_axyz_avel': njoints, nfeats = 308, 1
+        elif data_rep == 'rot6d_ks': njoints, nfeats = 524, 1
+        elif data_rep == 'rot6d_ks_1': njoints, nfeats = 380, 1
+        elif data_rep == 'rot6d_ks_2': njoints, nfeats = 452, 1
         else:
             raise
 
@@ -125,7 +128,9 @@ def get_model_args(args, data):
         'dataset': args.dataset,
         'feature_mask_ratio': args.feature_mask_ratio,
         'feature_mask_block_size': args.feature_mask_block_size,
+        'feature_mask_training_exp' : getattr(args, 'feature_mask_training_exp', 0),
         'video_arch_experiment' : getattr(args, 'video_arch_experiment', 0),
+        'diffusion_steps' : args.diffusion_steps,
     }
 
 def create_gaussian_diffusion(args):
