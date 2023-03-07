@@ -247,6 +247,7 @@ def add_emp_options(parser):
     group.add_argument("--db_n_batches", default=-1, type=int, help='A debugging option for evaluation script.  Use only n evaluation batches.')
     group.add_argument("--ow_eval_batch_size", default=-1, type=int, help='Used by eval.py to overwrite the batch size.')
     group.add_argument("--baseline_name", default='', type=str, help='Used in `20230303_evaluate_baseline.py`.')
+    group.add_argument("--num_iters_per_epoch", default=100, type=int)
 
     
 def train_emp_args():
