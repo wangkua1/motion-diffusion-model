@@ -255,7 +255,7 @@ class MDM(nn.Module):
         if 'video' in self.cond_mode:
             features = y['features'].cuda()
             shape = features.shape
-            video_emb = self.embed_video(features)  # (N,T,D)
+            video_emb = self.embed_video(features, timesteps)  # (N,T,D)
             video_emb = video_emb.permute(1, 0, 2)  # (T,N,D)
             ## do not add to `emb`
 
@@ -439,7 +439,8 @@ class EmbedVideo(nn.Module):
                  arch="linear",
                  feature_mask_ratio=0.0,
                  feature_mask_block_size=5,
-                 arch_experiment=0):
+                 arch_experiment=0, 
+                 feature_mask_training_epx=0):
         """
         Do a linear projection and 
             'arch': a single linear layer projection. 
@@ -447,8 +448,9 @@ class EmbedVideo(nn.Module):
 
         """
         super().__init__()
-        self.arch=arch
-        self.arch_experiment=arch_experiment
+        self.arch = arch
+        self.arch_experiment = arch_experiment
+        self.feature_mask_training_epx = feature_mask_training_epx
         self.feature_mask_ratio = feature_mask_ratio
         self.feature_mask_block_size = feature_mask_block_size
 
@@ -495,7 +497,7 @@ class EmbedVideo(nn.Module):
             raise
         
 
-    def get_feature_mask(self, x):
+    def get_feature_mask_old(self, x, timesteps):
         """
         Randomly mask out video features in blocks along the time dimension.
 
@@ -538,15 +540,30 @@ class EmbedVideo(nn.Module):
                                                            dtype=bool)
         return mask_features
 
-    def forward(self, x):
+    def get_feature_mask(self, x, timesteps):
+        """
+        Randomly mask out video features in blocks along the time dimension.
+
+        Sort of similar approach to https://github.com/facebookresearch/mae/blob/6a2ba402291005b003a70e99f7c87d1a2c376b0d/models_mae.py
+
+        Returns: 
+            mask shape (N,T)
+        """
+        if self.feature_mask_training_epx==0:
+            return self.get_feature_mask_old(x, timesteps)
+        else: 
+            raise
+
+    def forward(self, x, timesteps):
         """ 
         x has shape (N,T,D): N batches of T frames of dimension D . 
         Do random masking on randomly within the T sequence. 
         Put all frames through the same MLP. 
         """
+        # import ipdb; ipdb.set_trace()
         N, T, D = x.shape
         if self.training:
-            mask = self.get_feature_mask(x).to(x.device)
+            mask = self.get_feature_mask(x, timesteps).to(x.device)
             x = mask.unsqueeze(-1) * x
 
         shape = x.shape

@@ -111,6 +111,7 @@ def add_model_options(parser):
                        help="Architecture to transform the video encoder features.")
     group.add_argument("--feature_mask_ratio", default=0, type=float, help="Video embedding: ratio of sequence to mask. Default 0 is no masking")
     group.add_argument("--feature_mask_block_size", default=5, type=int, help="Video embedding masking size. Ignored if feature_mask_ratio=0")
+    group.add_argument("--feature_mask_training_epx", default=0, type=int)
     group.add_argument("--video_arch_experiment", default=0, type=int, help="Int lookup for video architecture in experimentation")
 
 def add_data_options(parser):
@@ -245,6 +246,7 @@ def add_emp_options(parser):
     group.add_argument("--e_shape_loss_weight", default=60, type=int)
     group.add_argument("--db_n_batches", default=-1, type=int, help='A debugging option for evaluation script.  Use only n evaluation batches.')
     group.add_argument("--baseline_name", default='', type=str, help='Used in `20230303_evaluate_baseline.py`.')
+
     
 def train_emp_args():
     parser = ArgumentParser()

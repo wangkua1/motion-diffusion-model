@@ -137,21 +137,12 @@ def main():
         if args.guidance_param != 1:
             model_kwargs['y']['scale'] = torch.ones(args.batch_size, device=dist_util.dev()) * args.guidance_param
 
-        # unconditional case: if the dataset has no video features, then feed it a feature of all zeros
-        # if 'features' not in model_kwargs['y'].keys():
+        # unconditional case: if the dataset has no video features, then feed it a feature of all zeros)
+        # for now  we do it explicitly
         if 1:
             bs,_,_,T = model_kwargs['y']['mask'].shape
             model_kwargs['y']['features'] = torch.zeros((bs,T,2048), dtype=torch.float32)
             pass
-
-            
-        
-        # # setting unconditional 
-        # if 1:
-        #     model_kwargs['y']['text'] = ['']*len(model_kwargs['y']['text'])
-        #     args.guidance_param = 0.
-        #     model.cond_mode = "no_cond"
-
 
         sample_fn = diffusion.p_sample_loop
         with torch.no_grad():
