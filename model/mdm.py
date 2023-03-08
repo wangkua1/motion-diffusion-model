@@ -558,13 +558,29 @@ class EmbedVideo(nn.Module):
             return self.get_feature_mask_old(x)
 
         N, T, D = x.shape
-        # prepare mask
-        mask_features = torch.ones(N,T)
-        
+              
         # get ratios
         ts = timesteps.float() / self.diffusion_steps # put in [0,1]
         ratios = self.masking_rate(ts, int(self.feature_mask_training_exp))
 
+        # choose 
+        self.feature_mask_do_blocking=True
+        if self.feature_mask_do_blocking:
+            mask_features = self._feature_mask_from_ratios_block(x, ratios)
+        else: 
+            mask_features = self._feature_mask_from_ratios_rand(x, ratios)
+
+        return mask_features
+            
+
+    def _feature_mask_from_ratios_rand(self, x, ratios):
+        N, T, D = x.shape
+        mask_features = torch.ones(N,T)
+        raise NotImplementedError()
+
+    def _feature_mask_from_ratios_block(self, x, ratios):
+        N, T, D = x.shape
+        mask_features = torch.ones(N,T)
 
         # Divide the features into evenly-sized blocks. Truncate so that we always 
         # do MORE masking than requested. 
@@ -606,6 +622,7 @@ class EmbedVideo(nn.Module):
             Currently it just implements 1-t**a. 
         """
         assert (not torch.any(t > 1)) and (not torch.any(t < 0))
+        '''
         lookup = {
             1: 1,
             2: 2,
@@ -616,6 +633,8 @@ class EmbedVideo(nn.Module):
             7: 7,
         }
         a = lookup[feature_mask_training_exp]
+        '''
+        a = feature_mask_training_exp # simpler
 
         return 1 - t**a
 
