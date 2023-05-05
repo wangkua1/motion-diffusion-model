@@ -124,6 +124,8 @@ def add_data_options(parser):
     group.add_argument("--split", default='train', type=str)
     group.add_argument("--rotation_augmentation", action='store_true',
                        help="Randomly rotate the motinos about the y axis")
+    # TMP?
+    group.add_argument("--data_rep", default="rot6d", type=str, help='legacy option for `train_mdm.py`')
 
 def add_training_options(parser):
     group = parser.add_argument_group('training')
@@ -233,6 +235,7 @@ def add_evaluation_options(parser):
                        help="For classifier-free sampling - specifies the s parameter, as defined in the paper.")
 
 
+
 def add_emp_options(parser):
     group = parser.add_argument_group('emp')
     group.add_argument("--data_config_path", required=True, type=str)
@@ -248,7 +251,11 @@ def add_emp_options(parser):
     group.add_argument("--ow_eval_batch_size", default=-1, type=int, help='Used by eval.py to overwrite the batch size.')
     group.add_argument("--baseline_name", default='', type=str, help='Used in `20230303_evaluate_baseline.py`.')
     group.add_argument("--num_iters_per_epoch", default=100, type=int)
-
+    # analysis
+    group.add_argument("--overwrite_dpm_steps", type=int, default=-1)
+    group.add_argument("--overwrite_dpm_order", type=int, default=-1)
+    group.add_argument("--eval_full", type=int, default=1, help="by default, yes")
+    group.add_argument("--eval_shortcut", type=int, default=0)
     
 def train_emp_args():
     parser = ArgumentParser()
