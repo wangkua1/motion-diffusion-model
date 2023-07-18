@@ -144,6 +144,16 @@ def main():
             model_kwargs['y']['features'] = torch.zeros((bs,T,2048), dtype=torch.float32)
             pass
 
+        # ipdb.set_trace()
+        new_model_kwargs = {
+         'y':{
+            'features': model_kwargs['y']['features'],
+            'scale': model_kwargs['y']['scale'],
+            'mask': model_kwargs['y']['mask'],
+            'lengths': model_kwargs['y']['lengths'],
+         }
+        }
+        model_kwargs = new_model_kwargs
         sample_fn = diffusion.p_sample_loop
         with torch.no_grad():
             sample = sample_fn(
@@ -158,6 +168,8 @@ def main():
                 noise=None,
                 const_noise=False,
             )
+
+        # 
 
         # Recover XYZ *positions* from HumanML3D vector representation
         if model.data_rep == 'hml_vec':

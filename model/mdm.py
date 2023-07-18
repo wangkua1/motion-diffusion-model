@@ -320,7 +320,6 @@ class MDM(nn.Module):
         output = self.output_process(output)  # [bs, njoints, nfeats, nframes]
 
 
-        # ipdb.set_trace()
         return output
 
     def _apply(self, fn):

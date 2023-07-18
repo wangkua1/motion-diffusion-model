@@ -87,6 +87,10 @@ def collate(batch):
         img_names = [b['img_name'] for b in notnone_batches]
         cond['y'].update({'img_name': np.stack(img_names)})  # (N, T, 1)
 
+    if 'visible' in notnone_batches[0]:
+        visible = [torch.tensor(b['visible']) for b in notnone_batches]
+        cond['y'].update({'visible': torch.stack(visible)}) 
+
     if 'kp_2d' in notnone_batches[0]:
         kp_2d = [torch.tensor(b['kp_2d']) for b in notnone_batches]
         cond['y'].update({'kp_2d': torch.stack(kp_2d)}) 
